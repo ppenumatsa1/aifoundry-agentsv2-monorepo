@@ -1,0 +1,27 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "answer": {
+      "type": "string",
+      "description": "Direct answer to the user question."
+    },
+    "top_documents": {
+      "type": "array",
+      "description": "Top documents returned by File Search.",
+      "minItems": 1,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "doc_id": { "type": "string" },
+          "file_name": { "type": "string" },
+          "snippet": { "type": "string" }
+        },
+        "required": ["doc_id", "file_name", "snippet"]
+      }
+    }
+  },
+  "required": ["answer", "top_documents"]
+}
