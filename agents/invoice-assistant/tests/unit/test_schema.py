@@ -1,6 +1,9 @@
+import pytest
+
 from invoice_assistant.schema import InvoiceAssistantResponse
 
 
+@pytest.mark.unit
 def test_schema_roundtrip():
     data = {
         "answer": "The total amount for invoice INV-001 is $1200.00.",

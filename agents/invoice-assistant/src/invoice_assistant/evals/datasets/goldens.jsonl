@@ -1,1 +1,0 @@
-{"question": "What is the total amount for invoice INV-001?", "expected": {"answer": "The total amount for invoice INV-001 is $1200.00.", "top_documents": [{"doc_id": "inv-001", "file_name": "INV-001.pdf", "snippet": "Total: $1200.00"}]}}

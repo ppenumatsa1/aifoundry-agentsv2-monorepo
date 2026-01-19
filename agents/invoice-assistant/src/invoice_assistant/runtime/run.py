@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from typing import Iterable
 
 from invoice_assistant.config import get_settings
@@ -14,7 +15,14 @@ from invoice_assistant.core.schema_loader import load_response_schema
 from invoice_assistant.schema import InvoiceAssistantResponse
 
 
-def ask(question: str, stream: bool = False) -> InvoiceAssistantResponse:
+@dataclass(frozen=True)
+class AskResult:
+    response: InvoiceAssistantResponse
+    conversation_id: str
+    response_id: str | None
+
+
+def _run_agent(question: str) -> tuple[InvoiceAssistantResponse, str, str | None]:
     logger = get_logger(__name__)
     settings = get_settings()
     model = settings.azure_openai_model
@@ -53,7 +61,22 @@ def ask(question: str, stream: bool = False) -> InvoiceAssistantResponse:
 
         response_text = response.output_text
         data = json.loads(response_text)
-        return InvoiceAssistantResponse.model_validate(data)
+        response_id = getattr(response, "id", None)
+        return InvoiceAssistantResponse.model_validate(data), conversation.id, response_id
+
+
+def ask(question: str, stream: bool = False) -> InvoiceAssistantResponse:
+    response, _, _ = _run_agent(question)
+    return response
+
+
+def ask_with_metadata(question: str) -> AskResult:
+    response, conversation_id, response_id = _run_agent(question)
+    return AskResult(
+        response=response,
+        conversation_id=conversation_id,
+        response_id=response_id,
+    )
 
 
 def ask_stream(question: str) -> Iterable[str]:

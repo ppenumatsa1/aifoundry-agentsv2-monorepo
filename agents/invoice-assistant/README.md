@@ -19,7 +19,10 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 
 - Ingest invoices: `python scripts/ingest_invoices.py`
 - Ask a question: `python scripts/run_assistant.py "What is the total amount for invoice INV-1001?"`
-- Run evals: `python scripts/eval_assistant.py`
+- Run batch questions (questions.jsonl -> golden_capture.jsonl):
+  - `python scripts/run_batch_questions.py --questions src/invoice_assistant/evals/datasets/questions.jsonl`
+- Run Foundry evaluators on captured response IDs:
+  - `python scripts/run_foundry_evaluations.py --data src/invoice_assistant/evals/datasets/golden_capture.jsonl`
 
 ## Example output
 
@@ -39,6 +42,8 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 ## Notes
 
 - This agent is fully self-contained and does not share runtime dependencies with other agents.
+- Foundry evaluator runs require `AZURE_OPENAI_API_KEY`.
+- To log evaluation results in Foundry, set `AZURE_PROJECTS_ENDPOINT` in `.env`.
 
 ## Flow (technical)
 

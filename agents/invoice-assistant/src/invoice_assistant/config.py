@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     azure_openai_model: str
     azure_openai_api_version: str
 
+    # LLM-as-judge (Azure AI Evaluation SDK)
+    azure_ai_model_deployment_name: str | None = None
+
     # Agent config
     invoice_dataset_name: str
     invoice_vectorstore_name: str
