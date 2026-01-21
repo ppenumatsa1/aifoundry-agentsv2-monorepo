@@ -5,13 +5,15 @@ This agent is self-contained under `agents/invoice-assistant` with its own depen
 Key modules:
 
 - `src/invoice_assistant/core/`: shared utilities (paths, logging, exceptions, schema/prompt loaders).
+- `src/invoice_assistant/core/telemetry.py`: OpenTelemetry + Azure Monitor setup.
 - `src/invoice_assistant/runtime/`: orchestration, agent creation, caching, schema loading.
 - `src/invoice_assistant/ingest/`: vector store creation, upload, and cache handling.
-- `scripts/`: thin CLI wrappers around runtime/ingest modules.
+- `scripts/`: thin CLI wrappers around runtime/ingest modules plus orchestrator.
 - `data/invoices/`: sample invoice documents for ingestion.
 - `src/invoice_assistant/prompt.md`: agent instructions template.
 - `src/invoice_assistant/schema.json`: strict JSON response schema.
 - `.foundry/`: local caches (vector store id, agent id).
+- `src/invoice_assistant/evals/datasets/`: evaluation datasets (questions and captured runs).
 
 ## Full structure (important files)
 
@@ -37,9 +39,11 @@ Key modules:
 │       ├── tech-stack.md
 │       └── user-flow.md
 ├── scripts/
-│   ├── eval_assistant.py
 │   ├── ingest_invoices.py
-│   └── run_assistant.py
+│   ├── run_assistant.py
+│   ├── run_batch_questions.py
+│   └── run_foundry_evaluations.py
+│   └── run_orchestrator.py
 ├── src/
 │   └── invoice_assistant/
 │       ├── __init__.py
@@ -50,6 +54,7 @@ Key modules:
 │       ├── core/
 │       │   ├── exceptions.py
 │       │   ├── logging.py
+│       │   ├── telemetry.py
 │       │   ├── paths.py
 │       │   ├── prompt_loader.py
 │       │   └── schema_loader.py
@@ -64,6 +69,10 @@ Key modules:
 │       │   ├── openai_client.py
 │       │   └── run.py
 │       └── evals/
+│           ├── batch.py
+│           └── datasets/
+│               ├── questions.jsonl
+│               └── golden_capture.jsonl
 ├── tests/
 │   ├── integration/
 │   │   └── test_runtime.py

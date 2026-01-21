@@ -1,0 +1,13 @@
+name: aifoundry-agentsv2-demo
+metadata:
+  template: aifoundry-agentsv2-demo
+infra:
+  provider: bicep
+  path: infra
+hooks:
+  preprovision:
+    shell: sh
+    run: ./infra/hooks/invoice-assistant/preprovision.sh
+  postdeploy:
+    shell: sh
+    run: ./infra/hooks/invoice-assistant/postdeploy.sh

@@ -3,6 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Iterable, List
+import time
+
+from openai import RateLimitError
 
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
@@ -46,7 +49,21 @@ def run_batch_questions(questions: Iterable[dict]) -> List[dict]:
 
     for idx, item in enumerate(questions, start=1):
         question = item.get("question") if isinstance(item, dict) else str(item)
-        result = ask_with_metadata(question)
+        result = None
+        for attempt in range(1, 6):
+            try:
+                result = ask_with_metadata(question)
+                break
+            except RateLimitError:
+                wait_seconds = min(2**attempt, 30)
+                logger.warning(
+                    "rate_limited retrying attempt=%s wait_seconds=%s",
+                    attempt,
+                    wait_seconds,
+                )
+                time.sleep(wait_seconds)
+        if result is None:
+            raise SystemExit("Rate limit retry exceeded.")
         context_snippets = [doc.snippet for doc in result.response.top_documents]
         logger.info(
             "batch_question_completed index=%s conversation_id=%s response_id=%s",

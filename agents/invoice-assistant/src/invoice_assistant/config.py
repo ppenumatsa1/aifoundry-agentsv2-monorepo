@@ -9,6 +9,12 @@ class Settings(BaseSettings):
     _env_path = Path(__file__).resolve().parents[2] / ".env"
     model_config = SettingsConfigDict(env_file=_env_path, env_file_encoding="utf-8")
 
+    # Application Insights / Azure Monitor
+    app_insights_connection_string: str | None = None
+    otel_service_name: str = "invoice-assistant"
+    otel_service_version: str = "0.1.0"
+    otel_capture_message_content: bool = False
+
     # Azure AI Projects
     azure_projects_endpoint: str
     # Azure OpenAI (Responses API)

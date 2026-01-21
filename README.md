@@ -11,7 +11,8 @@ This repository demonstrates Azure AI Foundry Agents v2 using a domain-driven la
 ## Structure (high level)
 
 - `infra/` Azure infrastructure (Bicep).
-- `scripts/` Infra-only helpers.
+- `infra/hooks/<agent>/` azd lifecycle hooks per agent (preprovision/postdeploy).
+- `scripts/` Reserved for future shared infra helpers.
 - `agents/<domain>/` Fully isolated agent packages.
 
 ## Agents
@@ -22,6 +23,10 @@ This repository demonstrates Azure AI Foundry Agents v2 using a domain-driven la
 
 1. Provision infrastructure (azd):
    - `azd provision`
+2. Deploy (runs agent postdeploy hook):
+
+- `azd deploy`
+
 2. For the invoice agent:
    - `cd agents/invoice-assistant`
    - `python -m venv .venv && source .venv/bin/activate`
@@ -30,6 +35,9 @@ This repository demonstrates Azure AI Foundry Agents v2 using a domain-driven la
    - Run ingestion and query:
      - `python scripts/ingest_invoices.py`
      - `python scripts/run_assistant.py "What is the total amount for invoice INV-1001?"`
+   - Run batch evals:
+     - `python scripts/run_batch_questions.py --questions src/invoice_assistant/evals/datasets/questions.jsonl`
+     - `python scripts/run_foundry_evaluations.py --data src/invoice_assistant/evals/datasets/golden_capture.jsonl`
 
 ## More sample queries
 

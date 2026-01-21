@@ -4,10 +4,10 @@ from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential
 
 from invoice_assistant.config import Settings
+from invoice_assistant.core.telemetry import initialize_telemetry
 
 
 def build_project_client(settings: Settings) -> AIProjectClient:
+    initialize_telemetry(settings)
     credential = DefaultAzureCredential()
-    return AIProjectClient(
-        endpoint=settings.azure_projects_endpoint, credential=credential
-    )
+    return AIProjectClient(endpoint=settings.azure_projects_endpoint, credential=credential)

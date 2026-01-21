@@ -1,7 +1,0 @@
-name: aifoundry-agentsv2-demo
-metadata:
-  template: aifoundry-agentsv2-demo
-services: {}
-infra:
-  provider: bicep
-  path: infra

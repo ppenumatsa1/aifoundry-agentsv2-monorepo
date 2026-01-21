@@ -21,8 +21,15 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 - Ask a question: `python scripts/run_assistant.py "What is the total amount for invoice INV-1001?"`
 - Run batch questions (questions.jsonl -> golden_capture.jsonl):
   - `python scripts/run_batch_questions.py --questions src/invoice_assistant/evals/datasets/questions.jsonl`
-- Run Foundry evaluators on captured response IDs:
+- Run Foundry evaluators on captured dataset:
   - `python scripts/run_foundry_evaluations.py --data src/invoice_assistant/evals/datasets/golden_capture.jsonl`
+- Run the full orchestration flow:
+  - `python scripts/run_orchestrator.py`
+
+## Deployment hooks
+
+- `azd deploy` triggers the invoice assistant postdeploy hook to run `scripts/run_orchestrator.py`.
+- Hook scripts live under `infra/hooks/invoice-assistant/` at the repo root.
 
 ## Example output
 
@@ -42,8 +49,14 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 ## Notes
 
 - This agent is fully self-contained and does not share runtime dependencies with other agents.
-- Foundry evaluator runs require `AZURE_OPENAI_API_KEY`.
+- Foundry evaluator runs require `AZURE_AI_MODEL_DEPLOYMENT_NAME` (judge deployment).
 - To log evaluation results in Foundry, set `AZURE_PROJECTS_ENDPOINT` in `.env`.
+- Telemetry to App Insights uses `APP_INSIGHTS_CONNECTION_STRING` and OpenTelemetry (see `.env.example`).
+
+## Evaluation datasets
+
+- questions.jsonl: input questions for batch runs.
+- golden_capture.jsonl: captured query/response/context (and tool fields when available).
 
 ## Flow (technical)
 
