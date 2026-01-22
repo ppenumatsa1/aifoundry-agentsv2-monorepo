@@ -1,6 +1,12 @@
 # AI Foundry Agents v2 (Domain-Driven)
 
-This repository demonstrates Azure AI Foundry Agents v2 using a domain-driven layout where each agent is fully self-contained.
+This repository contains multiple Azure AI Foundry Agents v2, organized as self-contained packages with automated azd provisioning and deployment hooks.
+
+## Summary
+
+- Multiple agents, each isolated with its own runtime, tests, and evals.
+- Automated provisioning/deploy via azd hooks.
+- Clear naming conventions for agent styles.
 
 ## Goals
 
@@ -8,49 +14,33 @@ This repository demonstrates Azure AI Foundry Agents v2 using a domain-driven la
 - No shared runtime dependencies across agents.
 - Azure infrastructure managed with azd + Bicep at the repository root.
 
+## Naming conventions
+
+- `pb-` means prompt-based.
+- `wf-` will mean workflow-based (future agents).
+
 ## Structure (high level)
 
-- `infra/` Azure infrastructure (Bicep).
-- `infra/hooks/<agent>/` azd lifecycle hooks per agent (preprovision/postdeploy).
-- `scripts/` Reserved for future shared infra helpers.
-- `agents/<domain>/` Fully isolated agent packages.
+- infra/: Azure infrastructure (Bicep).
+- infra/hooks/<agent>/: azd lifecycle hooks per agent (preprovision/postdeploy).
+- scripts/: reserved for shared infra helpers.
+- agents/<domain>/: fully isolated agent packages.
 
 ## Agents
 
-- `invoice-assistant`: Ingests invoice documents into Azure AI Projects vector stores. Uses vector store search RAG and returns strict JSON output via Azure OpenAI Responses API validated against a schema (`answer`, `top_documents`).
+| Agent            | Type         | Description                                                                                                                                                                            | README                                                                 |
+| ---------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| pb-invoice-agent | prompt-based | Ingests invoice documents into Azure AI Projects vector stores. Uses vector store search RAG and returns strict JSON output via Azure OpenAI Responses API validated against a schema. | [agents/pb-invoice-agent/README.md](agents/pb-invoice-agent/README.md) |
+| pb-gh-mcp-agent  | prompt-based | Connects to a remote MCP server (GitHub) and answers GitHub questions using MCP tools.                                                                                                 | [agents/pb-gh-mcp-agent/README.md](agents/pb-gh-mcp-agent/README.md)   |
 
-## Quick start
+## Provision and deploy (automated)
 
-1. Provision infrastructure (azd):
-   - `azd provision`
-2. Deploy (runs agent postdeploy hook):
+1. Provision infrastructure:
 
-- `azd deploy`
+- azd provision
 
-2. For the invoice agent:
-   - `cd agents/invoice-assistant`
-   - `python -m venv .venv && source .venv/bin/activate`
-   - `pip install -e .`
-   - Copy `.env.example` to `.env` and fill values (auth uses `DefaultAzureCredential`).
-   - Run ingestion and query:
-     - `python scripts/ingest_invoices.py`
-     - `python scripts/run_assistant.py "What is the total amount for invoice INV-1001?"`
-   - Run batch evals:
-     - `python scripts/run_batch_questions.py --questions src/invoice_assistant/evals/datasets/questions.jsonl`
-     - `python scripts/run_foundry_evaluations.py --data src/invoice_assistant/evals/datasets/golden_capture.jsonl`
+2. Deploy (runs the selected agent hook):
 
-## More sample queries
+- azd deploy
 
-- `python scripts/run_assistant.py "What is the vendor for invoice INV-1003?"`
-- `python scripts/run_assistant.py "What is the due date for invoice INV-1004?"`
-- `python scripts/run_assistant.py "List the line items on invoice INV-1002."`
-
-## Run tests
-
-From `agents/invoice-assistant` after ingesting invoices:
-
-- `pytest -q`
-
-## Notes
-
-- This repo is intentionally designed for multi-agent growth. Add new agents under `agents/<new-domain>` with their own dependencies and runtime.
+Agent-specific details (setup, env, scripts, and evals) live in each agent README.
