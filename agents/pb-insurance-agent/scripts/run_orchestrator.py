@@ -2,19 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 import subprocess
-import sys
 import time
 
-from invoice_assistant.core.logging import get_logger
+from insurance_agent.core.logging import get_logger
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = ROOT_DIR / "scripts"
-PYTHON = sys.executable or "python3"
 
-QUESTIONS_PATH = ROOT_DIR / "src/invoice_assistant/evals/datasets/questions.jsonl"
-CAPTURE_PATH = ROOT_DIR / "src/invoice_assistant/evals/datasets/golden_capture.jsonl"
-EVALUATION_NAME = "invoice-assistant-agent-eval"
-SMOKE_QUESTION = "What is the total amount for invoice INV-1001?"
+QUESTIONS_PATH = ROOT_DIR / "src/insurance_agent/evals/datasets/questions.jsonl"
+CAPTURE_PATH = ROOT_DIR / "src/insurance_agent/evals/datasets/golden_capture.jsonl"
+EVALUATION_NAME = "insurance-agent-eval"
+SMOKE_QUESTION = "Summarize the key benefits of the insurance plan."
 
 
 def run_step(logger, label: str, args: list[str]) -> None:
@@ -36,27 +34,20 @@ def main() -> None:
     run_step(
         logger,
         "ingest",
-        [
-            PYTHON,
-            str(SCRIPTS_DIR / "ingest_invoices.py"),
-        ],
+        ["python", str(SCRIPTS_DIR / "ingest_documents.py")],
     )
 
     run_step(
         logger,
         "agent_create",
-        [
-            PYTHON,
-            str(SCRIPTS_DIR / "run_agent.py"),
-            SMOKE_QUESTION,
-        ],
+        ["python", str(SCRIPTS_DIR / "run_agent.py"), SMOKE_QUESTION],
     )
 
     run_step(
         logger,
         "batch_questions",
         [
-            PYTHON,
+            "python",
             str(SCRIPTS_DIR / "run_batch_questions.py"),
             "--questions",
             str(QUESTIONS_PATH),
@@ -69,7 +60,7 @@ def main() -> None:
         logger,
         "evaluations",
         [
-            PYTHON,
+            "python",
             str(SCRIPTS_DIR / "run_foundry_evaluations.py"),
             "--data",
             str(CAPTURE_PATH),

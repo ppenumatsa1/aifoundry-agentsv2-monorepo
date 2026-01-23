@@ -1,0 +1,5 @@
+{"question":"What is the annual deductible for the Northwind Standard plan?","ground_truth":"The deductible for the Northwind Standard plan is $2,000 per person, per year."}
+{"question":"What is the copayment in Northwind Standard plan for a specialist visit?","ground_truth":"The copayment for a specialist visit under the Northwind Standard plan is $50"}
+{"question":"Are preventive care services covered?","ground_truth":"Yes, preventive care services are covered at 100% under the Northwind Standard plan"}
+{"question":"Does Perksplus cover horseback riding?","ground_truth":"Yes, Perksplus covers horsebackriding"}
+{"question":"Do we have holiday on President's day?","ground_truth":"Yes, President's Day is a holiday according to the Contoso Electronics Holidays Calendar for 2025. It falls on February 17th."}

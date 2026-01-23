@@ -11,6 +11,9 @@ case "${AGENT_NAME}" in
   pb-invoice-agent)
     bash "${ROOT_DIR}/infra/hooks/pb-invoice-agent/postdeploy.sh"
     ;;
+  pb-insurance-agent)
+    bash "${ROOT_DIR}/infra/hooks/pb-insurance-agent/postdeploy.sh"
+    ;;
   *)
     echo "Unknown AGENT_NAME: ${AGENT_NAME}" >&2
     exit 1

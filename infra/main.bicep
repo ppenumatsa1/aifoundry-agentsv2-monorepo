@@ -26,6 +26,7 @@ var resourceToken = toLower(uniqueString(resourceGroup().id, environmentName))
 var namePrefix = 'aif${resourceToken}'
 var foundryName = '${namePrefix}-foundry'
 var foundryProjectName = '${namePrefix}-proj'
+var searchServiceName = '${namePrefix}-search-basic'
 
 var gpt41MiniDeployment = {
   name: 'gpt-4.1-mini'
@@ -94,10 +95,35 @@ module foundryModels 'modules/foundry-models.bicep' = {
   }
 }
 
+// module aiSearch 'modules/ai-search.bicep' = {
+//   params: {
+//     location: location
+//     tags: tags
+//     namePrefix: namePrefix
+//     searchServiceName: searchServiceName
+//   }
+// }
+
+// module rbac 'modules/rbac.bicep' = {
+//   params: {
+//     searchServiceName: aiSearch.outputs.searchName
+//     searchPrincipalId: aiSearch.outputs.searchPrincipalId
+//     foundryName: foundry.outputs.foundryName
+//     foundryProjectName: foundryProject.outputs.projectName
+//     projectPrincipalId: foundryProject.outputs.projectPrincipalId
+//     userPrincipalId: '824198c2-af1b-44c3-8ea2-a9c34ded454c'
+//   }
+// }
+
 output location string = location
 output environmentName string = environmentName
+output foundryId string = foundry.outputs.foundryId
 output foundryName string = foundry.outputs.foundryName
 output foundryProjectName string = foundryProject.outputs.projectName
+output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipalId
 output foundryModelDeploymentNames string[] = foundryModels.outputs.deploymentNames
 @secure()
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
+// output searchServiceName string = aiSearch.outputs.searchName
+// output searchEndpoint string = aiSearch.outputs.searchEndpoint
+// output searchServicePrincipalId string = aiSearch.outputs.searchPrincipalId

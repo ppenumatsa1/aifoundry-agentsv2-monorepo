@@ -23,7 +23,16 @@ def run_step(logger, label: str, args: list[str]) -> None:
     cmd = " ".join(args)
     logger.info("step=%s start cmd=%s", label, cmd)
     started = time.time()
-    result = subprocess.run(args, check=True, capture_output=True, text=True)
+    try:
+        result = subprocess.run(args, check=True, capture_output=True, text=True)
+    except subprocess.CalledProcessError as exc:
+        duration = time.time() - started
+        if exc.stdout:
+            logger.info("step=%s stdout=\n%s", label, exc.stdout.strip())
+        if exc.stderr:
+            logger.warning("step=%s stderr=\n%s", label, exc.stderr.strip())
+        logger.error("step=%s failed duration=%.2fs", label, duration)
+        raise
     duration = time.time() - started
     if result.stdout:
         logger.info("step=%s stdout=\n%s", label, result.stdout.strip())

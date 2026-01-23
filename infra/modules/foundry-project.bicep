@@ -36,3 +36,4 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-previ
 
 output projectId string = project.id
 output projectName string = project.name
+output projectPrincipalId string = project.identity.principalId

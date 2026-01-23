@@ -15,6 +15,7 @@ venv/
 
 # Environment files
 .env
+.env.bak
 
 # Tooling caches
 .pytest_cache/
