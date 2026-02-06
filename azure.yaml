@@ -4,10 +4,3 @@ metadata:
 infra:
   provider: bicep
   path: infra
-hooks:
-  preprovision:
-    shell: sh
-    run: ./infra/hooks/router/preprovision.sh
-  postdeploy:
-    shell: sh
-    run: ./infra/hooks/router/postdeploy.sh

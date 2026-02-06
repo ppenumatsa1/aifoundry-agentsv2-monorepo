@@ -41,9 +41,16 @@ def run_step(logger, label: str, args: list[str]) -> None:
     logger.info("step=%s done duration=%.2fs", label, duration)
 
 
+def log_section(logger, title: str) -> None:
+    logger.info("")
+    logger.info("==================== %s ====================", title)
+    logger.info("")
+
+
 def main() -> None:
     logger = get_logger(__name__)
 
+    log_section(logger, "Step 1: Smoke test")
     run_step(
         logger,
         "agent_create",
@@ -54,6 +61,7 @@ def main() -> None:
         ],
     )
 
+    log_section(logger, "Step 2: Run Batch")
     run_step(
         logger,
         "batch_questions",
@@ -67,6 +75,7 @@ def main() -> None:
         ],
     )
 
+    log_section(logger, "Step 3: Run Evaluations")
     run_step(
         logger,
         "evaluations",

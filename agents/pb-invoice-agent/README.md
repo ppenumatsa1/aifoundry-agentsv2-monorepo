@@ -11,7 +11,7 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 
 ## Setup
 
-1. `python -m venv .venv && source .venv/bin/activate`
+1. `python3 -m venv .venv && source .venv/bin/activate`
 2. `pip install -e .`
 3. Copy `.env.example` to `.env` and set values.
 
@@ -26,10 +26,13 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 - Run the full orchestration flow:
   - `python scripts/run_orchestrator.py`
 
-## Deployment hooks
+Optional using Make:
 
-- `azd deploy` triggers the invoice assistant postdeploy hook to run `scripts/run_orchestrator.py`.
-- Hook scripts live under `infra/hooks/pb-invoice-agent/` at the repo root.
+- `make ingest`
+- `make run QUESTION="What is the total amount for invoice INV-1001?"`
+- `make batch`
+- `make evals`
+- `make orchestrate`
 
 ## Example output
 
@@ -50,7 +53,7 @@ Responses strictly conform to the schema in `src/invoice_assistant/schema.json` 
 
 - This agent is fully self-contained and does not share runtime dependencies with other agents.
 - Foundry evaluator runs require `AZURE_AI_MODEL_DEPLOYMENT_NAME` (judge deployment).
-- To log evaluation results in Foundry, set `AZURE_PROJECTS_ENDPOINT` in `.env`.
+- To log evaluation results in Foundry, set `AZURE_AI_PROJECT_ENDPOINT` in `.env`.
 - Telemetry to App Insights uses `APP_INSIGHTS_CONNECTION_STRING` and OpenTelemetry (see `.env.example`).
 
 ## Evaluation datasets

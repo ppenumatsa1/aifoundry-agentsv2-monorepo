@@ -27,10 +27,10 @@ def load_eval_items(data_path: Path) -> list[dict]:
 
 def load_judge_model_config() -> dict:
     load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
-    deployment = os.getenv("AZURE_AI_MODEL_DEPLOYMENT_NAME") or os.getenv("AZURE_OPENAI_MODEL")
+    deployment = os.getenv("AZURE_AI_MODEL_DEPLOYMENT_NAME")
 
     if not deployment:
-        raise SystemExit("AZURE_AI_MODEL_DEPLOYMENT_NAME (or AZURE_OPENAI_MODEL) is required.")
+        raise SystemExit("AZURE_AI_MODEL_DEPLOYMENT_NAME is required.")
 
     return {
         "deployment_name": deployment,

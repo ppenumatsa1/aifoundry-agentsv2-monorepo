@@ -40,9 +40,6 @@ class Settings(BaseSettings):
     azure_projects_endpoint: str = Field(
         validation_alias=AliasChoices(
             "AZURE_AI_PROJECT_ENDPOINT",
-            "AZURE_PROJECTS_ENDPOINT",
-            "FOUNDRY_PROJECT_ENDPOINT",
-            "azure_projects_endpoint",
         )
     )
     azure_project_resource_id: str | None = Field(
@@ -58,9 +55,6 @@ class Settings(BaseSettings):
     azure_openai_model: str = Field(
         validation_alias=AliasChoices(
             "AZURE_AI_MODEL_DEPLOYMENT_NAME",
-            "MODEL_DEPLOYMENT_NAME",
-            "AZURE_OPENAI_MODEL",
-            "azure_openai_model",
         )
     )
 

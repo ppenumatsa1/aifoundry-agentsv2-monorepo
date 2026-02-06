@@ -59,10 +59,22 @@ def _run_agent(question: str) -> tuple[InvoiceAssistantResponse, str, str | None
         )
         logger.info("response_received")
 
-        response_text = response.output_text
-        data = json.loads(response_text)
+        response_text = response.output_text or ""
+        data = _parse_response_json(response_text)
         response_id = getattr(response, "id", None)
         return InvoiceAssistantResponse.model_validate(data), conversation.id, response_id
+
+
+def _parse_response_json(response_text: str) -> dict:
+    # Handle cases where the model returns extra text before/after JSON.
+    decoder = json.JSONDecoder()
+    try:
+        payload, _ = decoder.raw_decode(response_text.lstrip())
+        if isinstance(payload, dict):
+            return payload
+    except json.JSONDecodeError:
+        pass
+    raise json.JSONDecodeError("Invalid JSON response", response_text, 0)
 
 
 def ask(question: str, stream: bool = False) -> InvoiceAssistantResponse:

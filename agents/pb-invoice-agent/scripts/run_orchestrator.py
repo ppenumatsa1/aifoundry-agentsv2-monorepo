@@ -18,6 +18,7 @@ SMOKE_QUESTION = "What is the total amount for invoice INV-1001?"
 
 
 def run_step(logger, label: str, args: list[str]) -> None:
+    # Standardized wrapper so each step reports timing and stdout/stderr.
     cmd = " ".join(args)
     logger.info("step=%s start cmd=%s", label, cmd)
     started = time.time()
@@ -30,9 +31,17 @@ def run_step(logger, label: str, args: list[str]) -> None:
     logger.info("step=%s done duration=%.2fs", label, duration)
 
 
+def log_section(logger, title: str) -> None:
+    logger.info("")
+    logger.info("==================== %s ====================", title)
+    logger.info("")
+
+
 def main() -> None:
     logger = get_logger(__name__)
 
+    # Step 1: Ingest invoice documents into a vector store.
+    log_section(logger, "Step 1: Ingest")
     run_step(
         logger,
         "ingest",
@@ -42,6 +51,8 @@ def main() -> None:
         ],
     )
 
+    # Step 2: Smoke test the agent with a single question.
+    log_section(logger, "Step 2: Smoke test")
     run_step(
         logger,
         "agent_create",
@@ -52,6 +63,8 @@ def main() -> None:
         ],
     )
 
+    # Step 3: Run the batch questions to capture traces.
+    log_section(logger, "Step 3: Run Batch")
     run_step(
         logger,
         "batch_questions",
@@ -65,6 +78,8 @@ def main() -> None:
         ],
     )
 
+    # Step 4: Evaluate captured runs with Foundry evaluators.
+    log_section(logger, "Step 4: Run Evaluations")
     run_step(
         logger,
         "evaluations",

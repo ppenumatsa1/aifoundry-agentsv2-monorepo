@@ -1,11 +1,11 @@
 # AI Foundry Agents v2 (Domain-Driven)
 
-This repository contains multiple Azure AI Foundry Agents v2, organized as self-contained packages with automated azd provisioning and deployment hooks.
+This repository contains multiple Azure AI Foundry Agents v2, organized as self-contained packages with azd provisioning and per-agent local execution.
 
 ## Summary
 
 - Multiple agents, each isolated with its own runtime, tests, and evals.
-- Automated provisioning/deploy via azd hooks.
+- Automated provisioning via azd.
 - Clear naming conventions for agent styles.
 
 ## Goals
@@ -22,9 +22,8 @@ This repository contains multiple Azure AI Foundry Agents v2, organized as self-
 ## Structure (high level)
 
 - infra/: Azure infrastructure (Bicep).
-- infra/hooks/<agent>/: azd lifecycle hooks per agent (preprovision/postdeploy).
 - scripts/: reserved for shared infra helpers.
-- agents/<domain>/: fully isolated agent packages.
+- agents/domain/: fully isolated agent packages.
 
 ## Agents
 
@@ -39,14 +38,9 @@ This repository contains multiple Azure AI Foundry Agents v2, organized as self-
 - Azure Developer CLI (azd)
 - Azure CLI authenticated session (`az login`)
 
-## Provision and deploy (automated)
+## Provision (azd) + run locally
 
-This repo assumes you do NOT check in `.env` or `.venv`. The azd hooks will:
-
-- create a `.venv` if missing and install dependencies,
-- copy `.env` from `.azure/<env>/.env` if missing,
-- derive Foundry endpoints from azd outputs,
-- prompt for missing secrets (for example, GitHub PAT) if not set in the azd env.
+This repo assumes you do NOT check in `.env` or `.venv`. Use azd for infra, then run agents locally from their folders.
 
 ### 1) Create/select an azd environment
 
@@ -62,13 +56,15 @@ pb-gh-mcp-agent needs a GitHub PAT:
 
 - azd env set MCP_PAT=<your_github_pat>
 
-### 4) Deploy a specific agent (runs postdeploy hook)
+### 4) Run a specific agent locally
 
-Set the agent you want to run:
+Follow the agent README for setup, env, and make targets:
 
-- AGENT_NAME=pb-gh-mcp-agent azd deploy
-- AGENT_NAME=pb-invoice-agent azd deploy
-
-If no agent is provided, the default hook targets `pb-invoice-agent`.
+- agents/pb-gh-mcp-agent/README.md
+- agents/pb-invoice-agent/README.md
 
 Agent-specific details (setup, env, scripts, and evals) live in each agent README.
+
+## Disclaimer
+
+This repository is provided for educational and demonstration purposes only. It is not intended for production use as-is. You are responsible for reviewing, testing, and securing any code, configurations, credentials, or deployment artifacts before using them in real systems. Do not deploy this repository without your own security review, compliance checks, and operational hardening (logging, alerting, backups, access controls, and cost safeguards). By using this repository, you acknowledge that you assume all risks associated with its use.

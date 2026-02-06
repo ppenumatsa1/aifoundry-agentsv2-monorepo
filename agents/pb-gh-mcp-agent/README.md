@@ -4,9 +4,15 @@ Lightweight Azure AI Foundry agent that connects to a remote MCP server as a too
 
 ## Setup
 
-1. `python -m venv .venv && source .venv/bin/activate`
+1. `python3 -m venv .venv && source .venv/bin/activate`
 2. `pip install -e .`
 3. Copy `.env.example` to `.env` and set values.
+
+Optional using Make:
+
+- `make venv`
+- `make install`
+- `make env`
 
 ## Run
 
@@ -18,6 +24,19 @@ Lightweight Azure AI Foundry agent that connects to a remote MCP server as a too
 - Run the full orchestration flow:
   - `python scripts/run_orchestrator.py`
 
+Optional using Make:
+
+- `make run QUESTION="What is my username in GitHub?"`
+- `make batch`
+- `make evals`
+- `make orchestrate`
+
+## Recommended flow (Foundry v2)
+
+1. Use `azd provision` for infra only (Foundry account, project, models, shared resources).
+2. Run agents locally per repo using the steps above; each agent owns its own setup, runs, and evals.
+3. Keep `.env` local per agent. Use `.azure/<env>/.env` as the source of truth and copy values as needed.
+
 ## Notes
 
 - MCP tool configuration comes from `.env`.
@@ -27,3 +46,8 @@ Lightweight Azure AI Foundry agent that connects to a remote MCP server as a too
 - Foundry evaluator runs require `AZURE_AI_MODEL_DEPLOYMENT_NAME` (judge deployment).
 - To log evaluation results in Foundry, set `AZURE_AI_PROJECT_ENDPOINT` in `.env`.
 - Telemetry to App Insights uses `APP_INSIGHTS_CONNECTION_STRING` and OpenTelemetry.
+
+## Environment naming (standard)
+
+- Use `AZURE_AI_PROJECT_ENDPOINT` and `AZURE_AI_MODEL_DEPLOYMENT_NAME` as the canonical names.
+- Keep real values in `.env` only; `.env.example` should use empty placeholders.

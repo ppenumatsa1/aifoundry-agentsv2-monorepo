@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from pydantic import AliasChoices, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -16,14 +17,15 @@ class Settings(BaseSettings):
     otel_capture_message_content: bool = False
 
     # Azure AI Projects
-    azure_projects_endpoint: str
+    azure_projects_endpoint: str = Field(
+        validation_alias=AliasChoices("AZURE_AI_PROJECT_ENDPOINT")
+    )
     # Azure OpenAI (Responses API)
     azure_openai_endpoint: str
-    azure_openai_model: str
+    azure_openai_model: str = Field(
+        validation_alias=AliasChoices("AZURE_AI_MODEL_DEPLOYMENT_NAME")
+    )
     azure_openai_api_version: str
-
-    # LLM-as-judge (Azure AI Evaluation SDK)
-    azure_ai_model_deployment_name: str | None = None
 
     # Agent config
     invoice_dataset_name: str

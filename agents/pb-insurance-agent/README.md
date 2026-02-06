@@ -4,7 +4,7 @@ This agent uses Azure AI Foundry project connections and an MCP tool to query Fo
 
 ## Setup
 
-1. Create and activate a virtual environment.
+1. Create and activate a virtual environment (`python3 -m venv .venv && source .venv/bin/activate`).
 2. Install dependencies:
    - `pip install -e .`
 3. Copy `.env.example` to `.env` and fill values.
@@ -19,6 +19,13 @@ This agent uses Azure AI Foundry project connections and an MCP tool to query Fo
   - `python scripts/run_batch_questions.py`
 - Run evals:
   - `python scripts/run_foundry_evaluations.py`
+
+Optional using Make:
+
+- `make ingest`
+- `make run QUESTION="What is the deductible for the basic plan?"`
+- `make batch`
+- `make evals`
 
 ## Notes
 
