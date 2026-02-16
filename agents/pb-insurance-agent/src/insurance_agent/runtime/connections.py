@@ -1,27 +1,11 @@
 from __future__ import annotations
 
-from typing import Any
-
 from azure.ai.projects import AIProjectClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 import requests
 
 from insurance_agent.config import Settings
 from insurance_agent.core.exceptions import McpConfigError
-
-
-def _extract_connection_id(payload: dict[str, Any]) -> str | None:
-    for key in ("id", "connectionId", "connection_id"):
-        value = payload.get(key)
-        if isinstance(value, str) and value.strip():
-            return value
-    properties = payload.get("properties")
-    if isinstance(properties, dict):
-        for key in ("connectionId", "connection_id"):
-            value = properties.get(key)
-            if isinstance(value, str) and value.strip():
-                return value
-    return None
 
 
 def _build_arm_payload(settings: Settings, mcp_endpoint: str) -> dict[str, Any]:

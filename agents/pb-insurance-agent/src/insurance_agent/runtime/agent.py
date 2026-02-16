@@ -73,7 +73,7 @@ def get_or_create_agent(
             server_url=server_url,
             require_approval=parse_require_approval(settings.mcp_require_approval),
             allowed_tools=_parse_allowed_tools(settings.mcp_allowed_tools),
-            project_connection_id=None,  # Let it use default RemoteTool connection
+            project_connection_id=connection_id,
         )
         agent = project_client.agents.create_version(
             agent_name=agent_name,

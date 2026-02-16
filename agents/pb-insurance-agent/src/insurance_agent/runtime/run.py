@@ -3,6 +3,9 @@ from __future__ import annotations
 from collections.abc import Iterable
 from dataclasses import dataclass
 
+from azure.identity import DefaultAzureCredential
+from azure.search.documents import SearchClient
+from openai import BadRequestError
 from openai.types.responses.response_input_param import McpApprovalResponse, ResponseInputParam
 
 from insurance_agent.config import get_settings
@@ -80,6 +83,73 @@ def _build_approval_input(
     return input_list
 
 
+def _is_mcp_auth_error(error: BadRequestError) -> bool:
+    text = str(error)
+    if "MCP server" in text and "401" in text:
+        return True
+
+    body = getattr(error, "body", None)
+    if isinstance(body, dict):
+        inner = body.get("error")
+        if isinstance(inner, dict):
+            message = str(inner.get("message", ""))
+            code = str(inner.get("code", ""))
+            if code == "tool_user_error" and "MCP server" in message and "401" in message:
+                return True
+    elif body is not None:
+        inner = getattr(body, "error", None)
+        if inner is not None:
+            message = str(getattr(inner, "message", ""))
+            code = str(getattr(inner, "code", ""))
+            if code == "tool_user_error" and "MCP server" in message and "401" in message:
+                return True
+    return False
+
+
+def _fallback_answer_with_search_context(
+    settings,
+    openai_client,
+    question: str,
+) -> str:
+    credential = DefaultAzureCredential()
+    search_client = SearchClient(
+        endpoint=settings.search_endpoint,
+        index_name=settings.search_index_name,
+        credential=credential,
+    )
+
+    results = search_client.search(
+        search_text=question,
+        top=settings.search_top_k,
+        select=["content", "source", "chunk"],
+    )
+
+    context_blocks: list[str] = []
+    for item in results:
+        content = str(item.get("content", "")).strip()
+        if not content:
+            continue
+        source = str(item.get("source", "unknown"))
+        chunk = str(item.get("chunk", ""))
+        context_blocks.append(f"[{source}#{chunk}] {content[:1500]}")
+
+    if not context_blocks:
+        return "I couldn't retrieve relevant context from the knowledge index right now."
+
+    grounded_prompt = (
+        "You are an insurance assistant. Use only the provided context to answer the user question. "
+        "If context is insufficient, say so clearly.\n\n"
+        f"Question: {question}\n\n"
+        "Context:\n" + "\n\n".join(context_blocks)
+    )
+
+    response = openai_client.responses.create(
+        model=settings.azure_openai_model,
+        input=grounded_prompt,
+    )
+    return _extract_response_text(response)
+
+
 def _run_agent(question: str) -> tuple[str, str, str | None]:
     logger = get_logger(__name__)
     settings = get_settings()
@@ -111,12 +181,23 @@ def _run_agent(question: str) -> tuple[str, str, str | None]:
         logger.info("conversation_created id=%s", conversation.id)
 
         logger.info("waiting_for_response")
-        response = openai_client.responses.create(
-            conversation=conversation.id,
-            tool_choice="required",
-            input=question,
-            extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
-        )
+        try:
+            response = openai_client.responses.create(
+                conversation=conversation.id,
+                tool_choice="required",
+                input=question,
+                extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
+            )
+        except BadRequestError as exc:
+            if _is_mcp_auth_error(exc):
+                logger.warning("mcp_auth_failed_using_fallback")
+                fallback_text = _fallback_answer_with_search_context(
+                    settings=settings,
+                    openai_client=openai_client,
+                    question=question,
+                )
+                return fallback_text, conversation.id, None
+            raise
 
         while True:
             approval_input = _build_approval_input(

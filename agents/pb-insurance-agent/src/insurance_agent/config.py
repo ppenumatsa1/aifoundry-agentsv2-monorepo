@@ -121,9 +121,7 @@ class Settings(BaseSettings):
         default=4,
         validation_alias=AliasChoices("MAX_PARALLEL_UPLOADS", "max_parallel_uploads"),
     )
-    chunk_size: int = Field(
-        default=1000, validation_alias=AliasChoices("CHUNK_SIZE", "chunk_size")
-    )
+    chunk_size: int = Field(default=1000, validation_alias=AliasChoices("CHUNK_SIZE", "chunk_size"))
     chunk_overlap: int = Field(
         default=200, validation_alias=AliasChoices("CHUNK_OVERLAP", "chunk_overlap")
     )

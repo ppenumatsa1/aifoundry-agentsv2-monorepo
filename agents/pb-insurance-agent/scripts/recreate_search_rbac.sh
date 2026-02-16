@@ -71,11 +71,11 @@ fi
 
 SEARCH_RESOURCE_ID="$(az search service show --resource-group "${AZURE_RESOURCE_GROUP}" --name "${SEARCH_SERVICE_NAME}" --query id -o tsv)"
 
-echo "🔧 Enforcing roles-only auth (disable local auth)"
+echo "🔧 Enabling compatible auth mode (RBAC + API key)"
 az rest \
   --method patch \
   --uri "https://management.azure.com${SEARCH_RESOURCE_ID}?api-version=2025-05-01" \
-  --body '{"properties":{"disableLocalAuth":true,"authOptions":null}}' >/dev/null
+  --body '{"properties":{"disableLocalAuth":false,"authOptions":{"aadOrApiKey":{"aadAuthFailureMode":"http401WithBearerChallenge"}}}}' >/dev/null
 
 SEARCH_ENDPOINT="https://${SEARCH_SERVICE_NAME}.search.windows.net"
 PROJECT_PRINCIPAL_ID="$(az resource show --ids "${AZURE_PROJECT_RESOURCE_ID}" --query identity.principalId -o tsv)"

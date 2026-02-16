@@ -140,9 +140,7 @@ def _build_embedding_client(settings: Settings) -> AzureOpenAI:
     )
 
 
-def _embed_texts(
-    embedding_client: AzureOpenAI, model: str, texts: list[str]
-) -> list[list[float]]:
+def _embed_texts(embedding_client: AzureOpenAI, model: str, texts: list[str]) -> list[list[float]]:
     response = embedding_client.embeddings.create(model=model, input=texts)
     return [list(item.embedding) for item in response.data]
 
