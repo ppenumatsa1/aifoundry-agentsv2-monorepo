@@ -1,0 +1,1 @@
+"""SharePoint grounding agent package."""

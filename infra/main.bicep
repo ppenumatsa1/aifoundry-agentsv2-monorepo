@@ -37,7 +37,7 @@ var gpt41MiniDeployment = {
   modelVersion: ''
   modelPublisherFormat: 'OpenAI'
   skuName: 'GlobalStandard'
-  capacity: 1000
+  capacity: 2000
 }
 
 var gpt5Deployment = {

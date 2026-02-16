@@ -177,8 +177,7 @@ def _fallback_answer_with_search_context(
         logger.warning("fallback_generation_rate_limited error=%s", exc)
         return (
             "I couldn't generate a fully synthesized answer right now due to service throttling. "
-            "Here are the most relevant retrieved excerpts:\n\n"
-            + "\n\n".join(context_blocks[:3])
+            "Here are the most relevant retrieved excerpts:\n\n" + "\n\n".join(context_blocks[:3])
         )
 
 
