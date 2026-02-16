@@ -23,14 +23,15 @@ This repository contains multiple Azure AI Foundry Agents v2, organized as self-
 
 - infra/: Azure infrastructure (Bicep).
 - scripts/: reserved for shared infra helpers.
-- agents/domain/: fully isolated agent packages.
+- agents/agent-name/: fully isolated agent packages.
 
 ## Agents
 
-| Agent            | Type         | Description                                                                                                                                                                            | README                                                                 |
-| ---------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| pb-invoice-agent | prompt-based | Ingests invoice documents into Azure AI Projects vector stores. Uses vector store search RAG and returns strict JSON output via Azure OpenAI Responses API validated against a schema. | [agents/pb-invoice-agent/README.md](agents/pb-invoice-agent/README.md) |
-| pb-gh-mcp-agent  | prompt-based | Connects to a remote MCP server (GitHub) and answers GitHub questions using MCP tools.                                                                                                 | [agents/pb-gh-mcp-agent/README.md](agents/pb-gh-mcp-agent/README.md)   |
+| Agent              | Type         | Description                                                                                                                                                                            | README                                                                     |
+| ------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| pb-invoice-agent   | prompt-based | Ingests invoice documents into Azure AI Projects vector stores. Uses vector store search RAG and returns strict JSON output via Azure OpenAI Responses API validated against a schema. | [agents/pb-invoice-agent/README.md](agents/pb-invoice-agent/README.md)     |
+| pb-gh-mcp-agent    | prompt-based | Connects to a remote MCP server (GitHub) and answers GitHub questions using MCP tools.                                                                                                 | [agents/pb-gh-mcp-agent/README.md](agents/pb-gh-mcp-agent/README.md)       |
+| pb-insurance-agent | prompt-based | Uses Foundry IQ with Knowledge Base and Knowledge Source resources through the MCP method, with MCP-first runtime and automatic direct Search fallback on MCP auth failure.            | [agents/pb-insurance-agent/README.md](agents/pb-insurance-agent/README.md) |
 
 ## Prerequisites
 
@@ -62,6 +63,7 @@ Follow the agent README for setup, env, and make targets:
 
 - agents/pb-gh-mcp-agent/README.md
 - agents/pb-invoice-agent/README.md
+- agents/pb-insurance-agent/README.md
 
 Agent-specific details (setup, env, scripts, and evals) live in each agent README.
 

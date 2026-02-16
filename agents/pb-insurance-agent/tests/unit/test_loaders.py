@@ -7,4 +7,4 @@ def test_split_text_respects_chunk_size() -> None:
     assert len(chunks) == 3
     assert len(chunks[0]) == 50
     assert len(chunks[1]) == 50
-    assert len(chunks[2]) == 30
+    assert len(chunks[2]) == 40

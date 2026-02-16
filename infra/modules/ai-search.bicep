@@ -11,7 +11,7 @@ param namePrefix string
 param searchServiceName string = '${namePrefix}-search'
 
 @description('Azure AI Search SKU')
-param skuName string = 'basic'
+param skuName string = 'free'
 
 @description('Search replica count')
 param replicaCount int = 1
@@ -36,7 +36,12 @@ resource search 'Microsoft.Search/searchServices@2023-11-01' = {
     replicaCount: replicaCount
     partitionCount: partitionCount
     publicNetworkAccess: publicNetworkAccess
-    disableLocalAuth: true
+    disableLocalAuth: false
+    authOptions: {
+      aadOrApiKey: {
+        aadAuthFailureMode: 'http401WithBearerChallenge'
+      }
+    }
   }
 }
 

@@ -8,9 +8,6 @@ This agent uses Azure AI Foundry project connections and an MCP tool to query Fo
 2. Install dependencies:
    - `pip install -e .`
 3. Copy `.env.example` to `.env` and fill values.
-4. (Optional) Recreate Azure AI Search auth + RBAC setup:
-
-- `make search-recreate`
 
 ## Run
 
@@ -25,7 +22,6 @@ This agent uses Azure AI Foundry project connections and an MCP tool to query Fo
 
 Optional using Make:
 
-- `make search-recreate`
 - `make ingest`
 - `make run QUESTION="What is the deductible for the basic plan?"`
 - `make batch`
@@ -35,6 +31,6 @@ Optional using Make:
 
 - Authentication uses Entra ID via `DefaultAzureCredential` only.
 - Runtime mode is MCP-first; on MCP 401 auth failure it automatically falls back to direct Azure AI Search retrieval.
-- Search service setup uses compatible mode (`aadOrApiKey`) plus RBAC assignments for local and project identities.
+- Search service and RBAC are provisioned via Bicep IaC.
 - Place source docs in `data/insurance-docs/` (PDF or TXT).
 - For MCP auth status, reproduction, and mitigation details, see `ISSUE_KB_MCP_AUTH.md`.

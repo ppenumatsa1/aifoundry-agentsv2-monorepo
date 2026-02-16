@@ -4,3 +4,9 @@ metadata:
 infra:
   provider: bicep
   path: infra
+  parameters:
+    userPrincipalId: ${USER_PRINCIPAL_ID}
+hooks:
+  preprovision:
+    shell: sh
+    run: sh ./scripts/set-user-principal-id.sh

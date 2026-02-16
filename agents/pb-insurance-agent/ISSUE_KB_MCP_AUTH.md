@@ -16,20 +16,12 @@ This is the only supported runtime mode in this repo right now.
 
 ---
 
-## Quick Reproduction (platform issue)
+## Platform Gap Summary
 
-Use `reproduce_auth_issue.py` to show the platform gap:
+Known preview behavior:
 
-1. Direct MCP call with API key works ✅
-2. Project connection lookup works ✅
-3. Responses API MCP call fails with 401 ❌
-
-Run:
-
-```bash
-source .venv/bin/activate
-python reproduce_auth_issue.py
-```
+1. MCP calls through Foundry Responses API can intermittently fail with 401 (`tool_user_error`).
+2. Runtime handles this by falling back to direct Search retrieval.
 
 ---
 
@@ -37,7 +29,6 @@ python reproduce_auth_issue.py
 
 ```bash
 source .venv/bin/activate
-make search-recreate
 make ingest
 make run QUESTION="What is the deductible for the basic plan?"
 ```
@@ -64,7 +55,9 @@ Expected:
 - Runtime MCP + fallback: `src/insurance_agent/runtime/run.py`
 - MCP tool creation (pinned connection): `src/insurance_agent/runtime/agent.py`
 - Connection setup: `src/insurance_agent/runtime/connections.py`
-- Search/RBAC setup script: `scripts/recreate_search_rbac.sh`
+- Search module: `infra/modules/ai-search.bicep`
+- Search RBAC module: `infra/modules/rbac.bicep`
+- Infra orchestration: `infra/main.bicep`
 
 ---
 

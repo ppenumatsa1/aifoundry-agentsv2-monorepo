@@ -13,6 +13,9 @@ param deployGpt5 bool = true
 @description('Deploy text-embedding-3-large model')
 param deployTextEmbedding bool = true
 
+@description('Optional user principal object ID for local Search RBAC assignment')
+param userPrincipalId string = ''
+
 @description('Tags applied to all resources')
 param tags object = {
   environment: environmentName
@@ -95,25 +98,23 @@ module foundryModels 'modules/foundry-models.bicep' = {
   }
 }
 
-// module aiSearch 'modules/ai-search.bicep' = {
-//   params: {
-//     location: location
-//     tags: tags
-//     namePrefix: namePrefix
-//     searchServiceName: searchServiceName
-//   }
-// }
+module aiSearch 'modules/ai-search.bicep' = {
+  params: {
+    location: location
+    tags: tags
+    namePrefix: namePrefix
+    searchServiceName: searchServiceName
+    skuName: 'free'
+  }
+}
 
-// module rbac 'modules/rbac.bicep' = {
-//   params: {
-//     searchServiceName: aiSearch.outputs.searchName
-//     searchPrincipalId: aiSearch.outputs.searchPrincipalId
-//     foundryName: foundry.outputs.foundryName
-//     foundryProjectName: foundryProject.outputs.projectName
-//     projectPrincipalId: foundryProject.outputs.projectPrincipalId
-//     userPrincipalId: '824198c2-af1b-44c3-8ea2-a9c34ded454c'
-//   }
-// }
+module rbac 'modules/rbac.bicep' = {
+  params: {
+    searchServiceName: aiSearch.outputs.searchName
+    projectPrincipalId: foundryProject.outputs.projectPrincipalId
+    userPrincipalId: userPrincipalId
+  }
+}
 
 output location string = location
 output environmentName string = environmentName
@@ -124,6 +125,7 @@ output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipa
 output foundryModelDeploymentNames string[] = foundryModels.outputs.deploymentNames
 @secure()
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
-// output searchServiceName string = aiSearch.outputs.searchName
-// output searchEndpoint string = aiSearch.outputs.searchEndpoint
-// output searchServicePrincipalId string = aiSearch.outputs.searchPrincipalId
+output searchServiceName string = aiSearch.outputs.searchName
+output searchServiceId string = aiSearch.outputs.searchId
+output searchEndpoint string = aiSearch.outputs.searchEndpoint
+output searchServicePrincipalId string = aiSearch.outputs.searchPrincipalId
