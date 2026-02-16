@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 import re
+import time
+from typing import Iterable, Sequence
 
 from azure.core.exceptions import ResourceNotFoundError
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
@@ -32,6 +35,12 @@ from insurance_agent.config import Settings
 from insurance_agent.core.logging import get_logger
 from insurance_agent.core.paths import get_agent_root
 from insurance_agent.ingest.loaders import load_documents
+
+
+def _batched(values: Sequence, batch_size: int) -> Iterable[Sequence]:
+    size = max(1, batch_size)
+    for index in range(0, len(values), size):
+        yield values[index : index + size]
 
 
 def _build_index(settings: Settings) -> SearchIndex:
@@ -131,51 +140,105 @@ def _build_embedding_client(settings: Settings) -> AzureOpenAI:
     )
 
 
-def _embed_text(embedding_client: AzureOpenAI, model: str, text: str) -> list[float]:
-    response = embedding_client.embeddings.create(model=model, input=[text])
-    return list(response.data[0].embedding)
+def _embed_texts(
+    embedding_client: AzureOpenAI, model: str, texts: list[str]
+) -> list[list[float]]:
+    response = embedding_client.embeddings.create(model=model, input=texts)
+    return [list(item.embedding) for item in response.data]
+
+
+def _upload_batch(
+    endpoint: str,
+    index_name: str,
+    credential: DefaultAzureCredential,
+    documents: list[dict],
+) -> int:
+    search_client = SearchClient(
+        endpoint=endpoint,
+        index_name=index_name,
+        credential=credential,
+    )
+    result = search_client.upload_documents(documents)
+    return len(result)
 
 
 def ingest_documents(settings: Settings) -> None:
     logger = get_logger(__name__)
+    started_at = time.perf_counter()
+
     ensure_index(settings)
     ensure_knowledge_source(settings)
     ensure_knowledge_base(settings)
 
     doc_dir = get_agent_root() / "data" / "insurance-docs"
+    load_started = time.perf_counter()
     chunks = load_documents(doc_dir, settings.chunk_size, settings.chunk_overlap)
+    load_seconds = time.perf_counter() - load_started
 
     credential = DefaultAzureCredential()
     embedding_client = _build_embedding_client(settings)
 
-    search_client = SearchClient(
-        endpoint=settings.search_endpoint,
-        index_name=settings.search_index_name,
-        credential=credential,
+    embedding_batch_size = max(1, settings.embedding_batch_size)
+    upload_batch_size = max(1, settings.upload_batch_size)
+    max_parallel_uploads = max(1, settings.max_parallel_uploads)
+
+    embedding_started = time.perf_counter()
+    prepared_docs: list[dict] = []
+    for chunk_batch in _batched(chunks, embedding_batch_size):
+        texts = [chunk.content for chunk in chunk_batch]
+        embeddings = _embed_texts(embedding_client, settings.embedding_model, texts)
+        for chunk, embedding in zip(chunk_batch, embeddings, strict=True):
+            raw_id = f"{chunk.source}-{chunk.chunk_id}"
+            safe_id = re.sub(r"[^A-Za-z0-9_\-=]", "_", raw_id)
+            prepared_docs.append(
+                {
+                    "id": safe_id,
+                    "content": chunk.content,
+                    "source": chunk.source,
+                    "chunk": chunk.chunk_id,
+                    "embedding": embedding,
+                }
+            )
+    embedding_seconds = time.perf_counter() - embedding_started
+
+    upload_started = time.perf_counter()
+    upload_futures: list[Future[int]] = []
+    uploaded_count = 0
+    with ThreadPoolExecutor(max_workers=max_parallel_uploads) as executor:
+        for doc_batch in _batched(prepared_docs, upload_batch_size):
+            upload_futures.append(
+                executor.submit(
+                    _upload_batch,
+                    settings.search_endpoint,
+                    settings.search_index_name,
+                    credential,
+                    list(doc_batch),
+                )
+            )
+
+            if len(upload_futures) >= max_parallel_uploads:
+                done, pending = wait(upload_futures, return_when=FIRST_COMPLETED)
+                upload_futures = list(pending)
+                for future in done:
+                    batch_uploaded = future.result()
+                    uploaded_count += batch_uploaded
+                    logger.info("uploaded_documents count=%s", batch_uploaded)
+
+        for future in upload_futures:
+            batch_uploaded = future.result()
+            uploaded_count += batch_uploaded
+            logger.info("uploaded_documents count=%s", batch_uploaded)
+
+    upload_seconds = time.perf_counter() - upload_started
+    total_seconds = time.perf_counter() - started_at
+
+    logger.info(
+        "index_ready name=%s chunks=%s uploaded=%s load_s=%.2f embed_s=%.2f upload_s=%.2f total_s=%.2f",
+        settings.search_index_name,
+        len(chunks),
+        uploaded_count,
+        load_seconds,
+        embedding_seconds,
+        upload_seconds,
+        total_seconds,
     )
-
-    batch: list[dict] = []
-    for chunk in chunks:
-        embedding = _embed_text(embedding_client, settings.embedding_model, chunk.content)
-        raw_id = f"{chunk.source}-{chunk.chunk_id}"
-        safe_id = re.sub(r"[^A-Za-z0-9_\-=]", "_", raw_id)
-        batch.append(
-            {
-                "id": safe_id,
-                "content": chunk.content,
-                "source": chunk.source,
-                "chunk": chunk.chunk_id,
-                "embedding": embedding,
-            }
-        )
-
-        if len(batch) >= 50:
-            result = search_client.upload_documents(batch)
-            logger.info("uploaded_documents count=%s", len(result))
-            batch = []
-
-    if batch:
-        result = search_client.upload_documents(batch)
-        logger.info("uploaded_documents count=%s", len(result))
-
-    logger.info("index_ready name=%s chunks=%s", settings.search_index_name, len(chunks))

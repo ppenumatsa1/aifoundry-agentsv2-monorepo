@@ -25,39 +25,19 @@ def _extract_connection_id(payload: dict[str, Any]) -> str | None:
 
 
 def _build_arm_payload(settings: Settings, mcp_endpoint: str) -> dict[str, Any]:
-    # Use API key if available, otherwise ProjectManagedIdentity
-    if settings.search_api_key:
-        return {
-            "name": settings.mcp_connection_name,
-            "type": "Microsoft.MachineLearningServices/workspaces/connections",
-            "properties": {
-                "authType": "CustomKeys",
-                "category": "RemoteTool",
-                "target": mcp_endpoint,
-                "isSharedToAll": True,
-                "isDefault": True,
-                "credentials": {
-                    "keys": {
-                        "key": settings.search_api_key
-                    }
-                },
-                "metadata": {"ApiType": "Azure", "server_label": settings.mcp_server_label},
-            },
-        }
-    else:
-        return {
-            "name": settings.mcp_connection_name,
-            "type": "Microsoft.MachineLearningServices/workspaces/connections",
-            "properties": {
-                "authType": "ProjectManagedIdentity",
-                "category": "RemoteTool",
-                "target": mcp_endpoint,
-                "isSharedToAll": True,
-                "isDefault": True,
-                "audience": "https://search.azure.com/",
-                "metadata": {"ApiType": "Azure", "server_label": settings.mcp_server_label},
-            },
-        }
+    return {
+        "name": settings.mcp_connection_name,
+        "type": "Microsoft.MachineLearningServices/workspaces/connections",
+        "properties": {
+            "authType": "ProjectManagedIdentity",
+            "category": "RemoteTool",
+            "target": mcp_endpoint,
+            "isSharedToAll": True,
+            "isDefault": True,
+            "audience": "https://search.azure.com/",
+            "metadata": {"ApiType": "Azure", "server_label": settings.mcp_server_label},
+        },
+    }
 
 
 def _create_or_update_arm_connection(settings: Settings, mcp_endpoint: str) -> str:

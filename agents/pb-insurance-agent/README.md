@@ -8,6 +8,8 @@ This agent uses Azure AI Foundry project connections and an MCP tool to query Fo
 2. Install dependencies:
    - `pip install -e .`
 3. Copy `.env.example` to `.env` and fill values.
+4. (Optional) Recreate Azure AI Search with RBAC-only auth:
+  - `make search-recreate`
 
 ## Run
 
@@ -22,6 +24,7 @@ This agent uses Azure AI Foundry project connections and an MCP tool to query Fo
 
 Optional using Make:
 
+- `make search-recreate`
 - `make ingest`
 - `make run QUESTION="What is the deductible for the basic plan?"`
 - `make batch`
@@ -30,4 +33,5 @@ Optional using Make:
 ## Notes
 
 - Authentication uses Entra ID via `DefaultAzureCredential` only.
+- Search service auth is RBAC-only (`disableLocalAuth=true`), not API-key based.
 - Place source docs in `data/insurance-docs/` (PDF or TXT).

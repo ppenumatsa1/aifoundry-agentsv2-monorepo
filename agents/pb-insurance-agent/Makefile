@@ -1,4 +1,4 @@
-.PHONY: help venv install env ingest run batch evals orchestrate clean
+.PHONY: help venv install env search-recreate ingest run batch evals orchestrate clean
 
 VENV := .venv
 PY := $(VENV)/bin/python
@@ -9,6 +9,7 @@ help:
 	@echo "  make venv         Create local virtual environment"
 	@echo "  make install      Install package in editable mode"
 	@echo "  make env          Copy .env.example to .env if missing"
+	@echo "  make search-recreate Recreate Azure AI Search + RBAC setup"
 	@echo "  make ingest       Ingest insurance documents"
 	@echo "  make run          Run a single question (use QUESTION=...)"
 	@echo "  make batch        Run batch questions"
@@ -25,6 +26,9 @@ install:
 
 env:
 	@if [ ! -f .env ]; then cp .env.example .env; fi
+
+search-recreate:
+	bash scripts/recreate_search_rbac.sh
 
 ingest:
 	$(PY) scripts/ingest_documents.py

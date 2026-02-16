@@ -83,10 +83,6 @@ class Settings(BaseSettings):
     search_endpoint: str = Field(
         validation_alias=AliasChoices("SEARCH_ENDPOINT", "search_endpoint")
     )
-    search_api_key: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("SEARCH_API_KEY", "search_api_key"),
-    )
     search_index_name: str = Field(
         validation_alias=AliasChoices("SEARCH_INDEX_NAME", "search_index_name")
     )
@@ -112,6 +108,18 @@ class Settings(BaseSettings):
     search_vector_dim: int = Field(
         default=3072,
         validation_alias=AliasChoices("SEARCH_VECTOR_DIM", "search_vector_dim"),
+    )
+    embedding_batch_size: int = Field(
+        default=16,
+        validation_alias=AliasChoices("EMBEDDING_BATCH_SIZE", "embedding_batch_size"),
+    )
+    upload_batch_size: int = Field(
+        default=100,
+        validation_alias=AliasChoices("UPLOAD_BATCH_SIZE", "upload_batch_size"),
+    )
+    max_parallel_uploads: int = Field(
+        default=4,
+        validation_alias=AliasChoices("MAX_PARALLEL_UPLOADS", "max_parallel_uploads"),
     )
     chunk_size: int = Field(
         default=1000, validation_alias=AliasChoices("CHUNK_SIZE", "chunk_size")
