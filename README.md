@@ -27,11 +27,11 @@ This repository contains multiple Azure AI Foundry Agents v2, organized as self-
 
 ## Agents
 
-| Agent              | Type         | Description                                                                                                                                                                            | README                                                                     |
-| ------------------ | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| pb-invoice-agent   | prompt-based | Ingests invoice documents into Azure AI Projects vector stores. Uses vector store search RAG and returns strict JSON output via Azure OpenAI Responses API validated against a schema. | [agents/pb-invoice-agent/README.md](agents/pb-invoice-agent/README.md)     |
-| pb-gh-mcp-agent    | prompt-based | Connects to a remote MCP server (GitHub) and answers GitHub questions using MCP tools.                                                                                                 | [agents/pb-gh-mcp-agent/README.md](agents/pb-gh-mcp-agent/README.md)       |
-| pb-insurance-agent | prompt-based | Uses Foundry IQ with Knowledge Base and Knowledge Source resources through the MCP method, with MCP-first runtime and automatic direct Search fallback on MCP auth failure.            | [agents/pb-insurance-agent/README.md](agents/pb-insurance-agent/README.md) |
+| Agent                            | Type         | Description                                                                                                                                                                            | README                                                                                                 |
+| -------------------------------- | ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| 100-pb-vectorstore-invoice-agent | prompt-based | Ingests invoice documents into Azure AI Projects vector stores. Uses vector store search RAG and returns strict JSON output via Azure OpenAI Responses API validated against a schema. | [agents/100-pb-vectorstore-invoice-agent/README.md](agents/100-pb-vectorstore-invoice-agent/README.md) |
+| 200-pb-mcp-gh-agent              | prompt-based | Connects to a remote MCP server (GitHub) and answers GitHub questions using MCP tools.                                                                                                 | [agents/200-pb-mcp-gh-agent/README.md](agents/200-pb-mcp-gh-agent/README.md)                           |
+| 300-pb-foundryiq-insurance-agent | prompt-based | Uses Foundry IQ with Knowledge Base and Knowledge Source resources through the MCP method, with MCP-first runtime and automatic direct Search fallback on MCP auth failure.            | [agents/300-pb-foundryiq-insurance-agent/README.md](agents/300-pb-foundryiq-insurance-agent/README.md) |
 
 ## Prerequisites
 
@@ -53,7 +53,7 @@ This repo assumes you do NOT check in `.env` or `.venv`. Use azd for infra, then
 
 ### 3) Set required per-agent secrets
 
-pb-gh-mcp-agent needs a GitHub PAT:
+200-pb-mcp-gh-agent needs a GitHub PAT:
 
 - azd env set MCP_PAT=<your_github_pat>
 
@@ -61,9 +61,9 @@ pb-gh-mcp-agent needs a GitHub PAT:
 
 Follow the agent README for setup, env, and make targets:
 
-- agents/pb-gh-mcp-agent/README.md
-- agents/pb-invoice-agent/README.md
-- agents/pb-insurance-agent/README.md
+- agents/200-pb-mcp-gh-agent/README.md
+- agents/100-pb-vectorstore-invoice-agent/README.md
+- agents/300-pb-foundryiq-insurance-agent/README.md
 
 Agent-specific details (setup, env, scripts, and evals) live in each agent README.
 
