@@ -148,7 +148,7 @@ class Settings(BaseSettings):
         ),
     )
     mcp_require_approval: str = Field(
-        default="always",
+        default="never",
         validation_alias=AliasChoices("MCP_REQUIRE_APPROVAL", "mcp_require_approval"),
     )
     mcp_allowed_tools: str | None = Field(
@@ -158,6 +158,21 @@ class Settings(BaseSettings):
     mcp_auto_approve: bool = Field(
         default=True,
         validation_alias=AliasChoices("MCP_AUTO_APPROVE", "mcp_auto_approve"),
+    )
+    mcp_max_approval_rounds: int = Field(
+        default=1,
+        validation_alias=AliasChoices("MCP_MAX_APPROVAL_ROUNDS", "mcp_max_approval_rounds"),
+    )
+    response_timeout_seconds: float = Field(
+        default=45.0,
+        validation_alias=AliasChoices(
+            "RESPONSE_TIMEOUT_SECONDS",
+            "response_timeout_seconds",
+        ),
+    )
+    response_max_retries: int = Field(
+        default=1,
+        validation_alias=AliasChoices("RESPONSE_MAX_RETRIES", "response_max_retries"),
     )
     insurance_agent_name: str = Field(
         default="pb-foundryiq-insurance-agent",

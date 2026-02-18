@@ -8,9 +8,15 @@ from azure.monitor.opentelemetry import configure_azure_monitor
 
 from insurance_agent.config import Settings
 
+_TELEMETRY_INITIALIZED = False
+
 
 def initialize_telemetry(settings: Settings) -> None:
+    global _TELEMETRY_INITIALIZED
+
     if not settings.app_insights_connection_string:
+        return
+    if _TELEMETRY_INITIALIZED:
         return
     resource = Resource.create(
         {
@@ -24,3 +30,4 @@ def initialize_telemetry(settings: Settings) -> None:
         connection_string=settings.app_insights_connection_string,
         tracer_provider=tracer_provider,
     )
+    _TELEMETRY_INITIALIZED = True

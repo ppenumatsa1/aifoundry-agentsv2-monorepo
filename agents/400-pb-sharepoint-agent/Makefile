@@ -1,4 +1,4 @@
-.PHONY: help venv install env run batch evals orchestrate clean
+.PHONY: help venv install env run batch evals orchestrate e2e-once clean
 
 VENV := .venv
 PY := $(VENV)/bin/python
@@ -13,6 +13,7 @@ help:
 	@echo "  make batch        Run batch questions"
 	@echo "  make evals        Run Foundry evaluations"
 	@echo "  make orchestrate  Run full orchestration flow"
+	@echo "  make e2e-once     Run one-time end-to-end flow (run+batch+evals)"
 	@echo "  make clean        Remove venv and cache artifacts"
 
 venv:
@@ -36,6 +37,8 @@ evals:
 
 orchestrate:
 	$(PY) scripts/run_orchestrator.py
+
+e2e-once: orchestrate
 
 clean:
 	rm -rf $(VENV) .pytest_cache

@@ -5,6 +5,7 @@ from dataclasses import dataclass
 
 from azure.identity import DefaultAzureCredential
 from azure.search.documents import SearchClient
+from openai import APITimeoutError
 from openai import BadRequestError
 from openai import RateLimitError
 from openai.types.responses.response_input_param import McpApprovalResponse, ResponseInputParam
@@ -105,6 +106,9 @@ def _extract_error_fields(error: BadRequestError) -> tuple[str, str, str]:
 
 
 def _is_mcp_tool_error(error: Exception) -> bool:
+    if isinstance(error, APITimeoutError):
+        return True
+
     if isinstance(error, RateLimitError):
         return True
 
@@ -173,7 +177,7 @@ def _fallback_answer_with_search_context(
             input=grounded_prompt,
         )
         return _extract_response_text(response)
-    except RateLimitError as exc:
+    except (RateLimitError, APITimeoutError) as exc:
         logger.warning("fallback_generation_rate_limited error=%s", exc)
         return (
             "I couldn't generate a fully synthesized answer right now due to service throttling. "
@@ -199,6 +203,11 @@ def _run_agent(question: str) -> tuple[str, str, str | None]:
     connection_id = ensure_project_connection(project_client, settings)
 
     with project_client.get_openai_client() as openai_client:
+        request_client = openai_client.with_options(
+            timeout=settings.response_timeout_seconds,
+            max_retries=settings.response_max_retries,
+        )
+
         agent_name = get_or_create_agent(
             project_client=project_client,
             settings=settings,
@@ -213,12 +222,13 @@ def _run_agent(question: str) -> tuple[str, str, str | None]:
 
         logger.info("waiting_for_response")
         try:
-            response = openai_client.responses.create(
+            response = request_client.responses.create(
                 conversation=conversation.id,
                 tool_choice="required",
                 input=question,
                 extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
             )
+            approval_rounds = 0
             while True:
                 approval_input = _build_approval_input(
                     response.output,
@@ -227,15 +237,28 @@ def _run_agent(question: str) -> tuple[str, str, str | None]:
                 )
                 if not approval_input:
                     break
+                approval_rounds += 1
+                if approval_rounds > settings.mcp_max_approval_rounds:
+                    logger.warning(
+                        "mcp_approval_round_limit_exceeded rounds=%s limit=%s using_fallback",
+                        approval_rounds,
+                        settings.mcp_max_approval_rounds,
+                    )
+                    fallback_text = _fallback_answer_with_search_context(
+                        settings=settings,
+                        openai_client=openai_client,
+                        question=question,
+                    )
+                    return fallback_text, conversation.id, None
                 if not settings.mcp_auto_approve:
                     logger.info("approval_required count=%s", len(approval_input))
-                response = openai_client.responses.create(
+                response = request_client.responses.create(
                     tool_choice="required",
                     input=approval_input,
                     previous_response_id=response.id,
                     extra_body={"agent": {"name": agent_name, "type": "agent_reference"}},
                 )
-        except (BadRequestError, RateLimitError) as exc:
+        except (BadRequestError, RateLimitError, APITimeoutError) as exc:
             if _is_mcp_tool_error(exc):
                 logger.warning("mcp_tool_failed_using_fallback error=%s", exc)
                 fallback_text = _fallback_answer_with_search_context(

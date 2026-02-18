@@ -31,6 +31,8 @@ Optional using Make:
 
 - Authentication uses Entra ID via `DefaultAzureCredential` only.
 - Runtime mode is MCP-first; on MCP 401 auth failure it automatically falls back to direct Azure AI Search retrieval.
+- Default MCP approval mode is `MCP_REQUIRE_APPROVAL=never` to avoid an extra approval round-trip per request.
+- You can tune call volume and wait behavior with `MCP_MAX_APPROVAL_ROUNDS`, `RESPONSE_TIMEOUT_SECONDS`, and `RESPONSE_MAX_RETRIES`.
 - Search service and RBAC are provisioned via Bicep IaC.
 - Place source docs in `data/insurance-docs/` (PDF or TXT).
 - For MCP auth status, reproduction, and mitigation details, see `ISSUE_KB_MCP_AUTH.md`.
