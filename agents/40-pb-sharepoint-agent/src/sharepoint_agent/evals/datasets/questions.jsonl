@@ -1,0 +1,4 @@
+{"question": "What does the SharePoint documentation say about remote work security expectations?", "expected_context": "sharepoint"}
+{"question": "Summarize any MFA or identity requirements mentioned in the internal policy docs.", "expected_context": "sharepoint"}
+{"question": "What are the incident reporting expectations in our internal documentation?", "expected_context": "sharepoint"}
+{"question": "List collaboration or data-sharing restrictions described in our SharePoint documents.", "expected_context": "sharepoint"}
