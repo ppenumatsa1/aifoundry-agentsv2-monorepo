@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pb-teams-bing-agent"
+version = "0.1.0"
+description = "Minimal Teams bot forwarding messages to Azure AI Foundry agent"
+requires-python = ">=3.10"
+dependencies = [
+  "aiohttp>=3.9.0",
+  "azure-ai-projects==2.0.0b3",
+  "azure-identity>=1.15.0",
+  "fastapi>=0.110.0",
+  "microsoft-agents-activity>=0.0.0",
+  "microsoft-agents-authentication-msal>=0.0.0",
+  "microsoft-agents-hosting-core>=0.0.0",
+  "microsoft-agents-hosting-fastapi>=0.0.0",
+  "openai>=1.0.0",
+  "pydantic>=2.6.0",
+  "pydantic-settings>=2.2.0",
+  "python-dotenv>=1.0.0",
+  "pytest>=8.0.0",
+  "uvicorn>=0.30.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "integration: integration tests requiring Azure credentials",
+  "unit: fast unit tests",
+]
