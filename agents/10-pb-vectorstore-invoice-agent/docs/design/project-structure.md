@@ -1,6 +1,6 @@
 # Project Structure
 
-This agent is self-contained under `agents/100-pb-vectorstore-invoice-agent` with its own dependencies, prompts, schemas, scripts, tests, and evals.
+This agent is self-contained under `agents/10-pb-vectorstore-invoice-agent` with its own dependencies, prompts, schemas, scripts, tests, and evals.
 
 Key modules:
 
