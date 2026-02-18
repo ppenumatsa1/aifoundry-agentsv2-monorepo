@@ -16,7 +16,6 @@ from microsoft_agents.hosting.fastapi import (
 from microsoft_agents.hosting.core import (
     AgentApplication,
     AgentAuthConfiguration,
-    AnonymousTokenProvider,
     Authorization,
     MemoryStorage,
     MessageFactory,
@@ -30,7 +29,7 @@ from teams_bing_agent.runtime.state import ConversationStateStore
 
 class AnonymousConnectionManager:
     def __init__(self) -> None:
-        self._provider = AnonymousTokenProvider()
+        self._provider = _LocalDevTokenProvider()
 
     def get_connection(self, _connection_name: str):
         return self._provider
@@ -43,6 +42,25 @@ class AnonymousConnectionManager:
 
     def get_default_connection_configuration(self) -> AgentAuthConfiguration:
         return AgentAuthConfiguration()
+
+
+class _LocalDevTokenProvider:
+    async def get_access_token(
+        self, resource_url: str, scopes: list[str], force_refresh: bool = False
+    ) -> str:
+        return "local-dev-token"
+
+    async def acquire_token_on_behalf_of(self, assertion: str, scopes: list[str]):
+        return {"access_token": "local-dev-token"}
+
+    async def get_agentic_application_token(self, scopes: list[str]) -> str:
+        return "local-dev-token"
+
+    async def get_agentic_instance_token(self, scopes: list[str]) -> str:
+        return "local-dev-token"
+
+    async def get_agentic_user_token(self, user_assertion: str, scopes: list[str]) -> str:
+        return "local-dev-token"
 
 
 def _configure_agents_sdk_environment() -> dict:
@@ -69,9 +87,22 @@ def _configure_agents_sdk_environment() -> dict:
     return load_configuration_from_env(environ)
 
 
+def _is_configured(value: str | None) -> bool:
+    if not value:
+        return False
+    stripped = value.strip()
+    return bool(stripped) and not stripped.startswith("<")
+
+
 agents_sdk_config = _configure_agents_sdk_environment()
 storage = MemoryStorage()
-has_connection_config = bool(agents_sdk_config.get("CONNECTIONS"))
+has_connection_config = bool(agents_sdk_config.get("CONNECTIONS")) and all(
+    [
+        _is_configured(environ.get("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID")),
+        _is_configured(environ.get("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET")),
+        _is_configured(environ.get("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID")),
+    ]
+)
 
 app = FastAPI(title="pb-teams-bing-agent")
 api_app = FastAPI()

@@ -17,6 +17,9 @@ This version uses Web Search tool preview for current/public web lookups.
 - `AZURE_AI_PROJECT_ENDPOINT`
 - `FOUNDRY_AGENT_ID`
 - `AZURE_AI_MODEL_DEPLOYMENT_NAME`
+
+Required only for authenticated `/api/messages` testing (`make smoke-auth`):
+
 - `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID`
 - `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET`
 - `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID`
@@ -57,6 +60,35 @@ make orchestrate
 FastAPI endpoint:
 
 - `POST /api/messages`
+
+## Test locally (Microsoft 365 Agents Playground)
+
+Use this flow to test the full local SDK pipeline without Azure Bot registration complexity.
+
+1. Start the agent server:
+
+```bash
+cd /home/praveen/projects/agents/ai-foundry/aifoundry-agentsv2-demo/agents/50-pb-teams-bing-agent
+make run
+```
+
+2. In another terminal, start the playground:
+
+```bash
+npx -y @microsoft/teams-app-test-tool --app-endpoint http://127.0.0.1:8000/api/messages --channel-id msteams --delivery-mode expectReplies
+```
+
+The tool opens a local browser UI connected to your agent.
+
+Recommended test messages:
+
+- `What is the capital of France?`
+- `And what is the weather there right now?`
+
+Notes:
+
+- `npx` is recommended on Linux to avoid global npm permission issues.
+- Use `make smoke-auth` only when bot app credentials are configured.
 
 ## Authenticated smoke test (end-to-end)
 
