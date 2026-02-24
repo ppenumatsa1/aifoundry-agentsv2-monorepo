@@ -10,8 +10,10 @@ from azure.ai.projects.models import (
     WebSearchPreviewTool,
 )
 
-from teams_bing_agent.config import Settings
+from teams_bing_agent.config import Settings, get_settings
+from teams_bing_agent.core.prompt_loader import load_prompt_text
 from teams_bing_agent.runtime.cache import load_agent_cache, save_agent_cache
+from teams_bing_agent.runtime.openai_client import build_project_client
 
 
 def _agent_fingerprint(settings: Settings, instructions: str) -> str:
@@ -84,3 +86,26 @@ def get_or_create_agent(
         save_agent_cache(agent.name, agent.version, tool_hash)
 
     return agent_name
+
+
+def main() -> None:
+    settings = get_settings()
+    instructions = load_prompt_text()
+    project_client = build_project_client(settings)
+
+    agent_name = get_or_create_agent(
+        project_client=project_client,
+        settings=settings,
+        instructions=instructions,
+    )
+
+    cache = load_agent_cache() or {}
+    print(f"agent_name={agent_name}")
+    if cache.get("agent_version"):
+        print(f"agent_version={cache['agent_version']}")
+    if settings.azure_openai_model:
+        print(f"model={settings.azure_openai_model}")
+
+
+if __name__ == "__main__":
+    main()

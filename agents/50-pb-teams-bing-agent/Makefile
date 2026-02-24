@@ -1,20 +1,22 @@
-.PHONY: help venv install env run batch evals orchestrate e2e-once smoke-anon smoke-auth test clean
+.PHONY: help venv install env run batch evals orchestrate e2e-once create-agent provision-bot provision-aca teams-package test clean
 
 VENV := .venv
 PY := $(VENV)/bin/python
-
+QUESTION ?= What is the capital of France?
 help:
 	@echo "Targets:"
 	@echo "  make venv         Create local virtual environment"
 	@echo "  make install      Install package in editable mode"
 	@echo "  make env          Copy .env.example to .env if missing"
-	@echo "  make run          Start interactive Path B client"
-	@echo "  make batch        Run batch questions"
-	@echo "  make evals        Run Foundry evaluations"
-	@echo "  make orchestrate  Run full orchestration flow"
-	@echo "  make e2e-once     Alias for orchestration flow"
-	@echo "  make smoke-anon   Run two-turn smoke test against published endpoint"
-	@echo "  make smoke-auth   Run one-turn smoke test against published endpoint"
+	@echo "  make run          Start M365 bot server on /api/messages"
+	@echo "  make batch        Placeholder: batch flow scaffold"
+	@echo "  make evals        Placeholder: Foundry eval scaffold"
+	@echo "  make orchestrate  Placeholder: orchestration scaffold"
+	@echo "  make e2e-once     Alias for orchestrate"
+	@echo "  make create-agent Create/print Foundry agent with web_search + gpt-4o-mini"
+	@echo "  make provision-bot Provision Azure Bot + write MICROSOFT_APP_* to .env"
+	@echo "  make provision-aca Provision ACR + ACA env + ACA app (bot-first flow)"
+	@echo "  make teams-package Build Teams app zip under teams/build/"
 	@echo "  make test         Run unit tests"
 	@echo "  make clean        Remove venv and cache artifacts"
 
@@ -42,11 +44,17 @@ orchestrate:
 
 e2e-once: orchestrate
 
-smoke-anon:
-	$(PY) scripts/run_anon_smoke_test.py
+create-agent:
+	$(PY) -m teams_bing_agent.runtime.agent
 
-smoke-auth:
-	$(PY) scripts/run_auth_smoke_test.py
+provision-aca:
+	bash infra/provision_aca.sh
+
+provision-bot:
+	bash infra/provision_bot.sh
+
+teams-package:
+	python3 teams/build_teams_package.py
 
 test:
 	$(PY) -m pytest -m unit

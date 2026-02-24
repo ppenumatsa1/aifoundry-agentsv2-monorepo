@@ -23,6 +23,7 @@ from microsoft_agents.hosting.core import (
     TurnState,
 )
 
+from teams_bing_agent.config import get_settings
 from teams_bing_agent.runtime.run import ask_with_conversation
 from teams_bing_agent.runtime.state import ConversationStateStore
 
@@ -66,23 +67,18 @@ class _LocalDevTokenProvider:
 def _configure_agents_sdk_environment() -> dict:
     env_file = Path(__file__).resolve().parents[2] / ".env"
     load_dotenv(env_file)
-
-    def _is_configured(value: str | None) -> bool:
-        if not value:
-            return False
-        stripped = value.strip()
-        return bool(stripped) and not stripped.startswith("<")
+    settings = get_settings()
 
     client_id_key = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID"
     client_secret_key = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET"
     tenant_id_key = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID"
 
-    if not environ.get(client_id_key) and _is_configured(environ.get("MICROSOFT_APP_ID")):
-        environ[client_id_key] = environ["MICROSOFT_APP_ID"]
-    if not environ.get(client_secret_key) and _is_configured(environ.get("MICROSOFT_APP_PASSWORD")):
-        environ[client_secret_key] = environ["MICROSOFT_APP_PASSWORD"]
-    if not environ.get(tenant_id_key) and _is_configured(environ.get("MICROSOFT_APP_TENANT_ID")):
-        environ[tenant_id_key] = environ["MICROSOFT_APP_TENANT_ID"]
+    if not environ.get(client_id_key) and settings.microsoft_app_id:
+        environ[client_id_key] = settings.microsoft_app_id
+    if not environ.get(client_secret_key) and settings.microsoft_app_password:
+        environ[client_secret_key] = settings.microsoft_app_password
+    if not environ.get(tenant_id_key) and settings.microsoft_app_tenant_id:
+        environ[tenant_id_key] = settings.microsoft_app_tenant_id
 
     return load_configuration_from_env(environ)
 

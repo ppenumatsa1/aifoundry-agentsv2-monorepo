@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from teams_bing_agent.config import get_settings
-from teams_bing_agent.runtime.agent import get_or_create_agent
 from teams_bing_agent.runtime.openai_client import build_project_client
 from teams_bing_agent.runtime.state import ConversationStateStore
 
@@ -56,6 +55,8 @@ def ask_with_conversation(
     teams_conversation_id: str,
     state_store: ConversationStateStore,
 ) -> AskResult:
+    from teams_bing_agent.runtime.agent import get_or_create_agent
+
     settings = get_settings()
     project_client = build_project_client(settings)
     agent_name = get_or_create_agent(project_client, settings, AGENT_INSTRUCTIONS)
