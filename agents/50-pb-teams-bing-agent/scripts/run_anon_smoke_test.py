@@ -10,12 +10,15 @@ from dotenv import load_dotenv
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT_DIR / "src"))
 
-from teams_bing_agent.runtime.run import ask_with_conversation  # type: ignore[import-not-found]  # noqa: E402
-from teams_bing_agent.runtime.state import ConversationStateStore  # type: ignore[import-not-found]  # noqa: E402
+from teams_bing_agent.runtime.activityprotocol_client import (  # type: ignore[import-not-found]  # noqa: E402
+    send_activity_message,
+)
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Registration-free two-turn smoke test")
+    parser = argparse.ArgumentParser(
+        description="Two-turn smoke test against published Foundry ActivityProtocol endpoint"
+    )
     parser.add_argument(
         "--q1",
         default="What is the capital of France?",
@@ -23,26 +26,23 @@ def main() -> None:
     )
     parser.add_argument(
         "--q2",
-        default="And what is the weather there right now?",
+        default="Now answer in one short sentence.",
         help="Second user follow-up question",
     )
     args = parser.parse_args()
 
     load_dotenv(ROOT_DIR / ".env")
 
-    state_store = ConversationStateStore()
     teams_conversation_id = f"anon-smoke-{uuid.uuid4()}"
 
-    result_1 = ask_with_conversation(
-        question=args.q1,
-        teams_conversation_id=teams_conversation_id,
-        state_store=state_store,
+    result_1 = send_activity_message(
+        text=args.q1,
+        conversation_id=teams_conversation_id,
     )
 
-    result_2 = ask_with_conversation(
-        question=args.q2,
-        teams_conversation_id=teams_conversation_id,
-        state_store=state_store,
+    result_2 = send_activity_message(
+        text=args.q2,
+        conversation_id=teams_conversation_id,
     )
 
     reply1 = (result_1.response_text or "").strip()
@@ -54,7 +54,7 @@ def main() -> None:
         raise SystemExit("Smoke test failed: empty second reply")
 
     print("status=200")
-    print(f"conversation_id={result_1.foundry_conversation_id}")
+    print(f"conversation_id={result_1.conversation_id}")
     print("q1=" + args.q1)
     print("reply1=" + reply1)
     print("q2=" + args.q2)

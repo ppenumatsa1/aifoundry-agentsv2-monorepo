@@ -3,16 +3,17 @@ from __future__ import annotations
 from collections.abc import Iterable
 import json
 from pathlib import Path
-import time
 import uuid
 
 from azure.ai.projects import AIProjectClient
-from openai import RateLimitError
+from dotenv import load_dotenv
 
 from teams_bing_agent.config import get_settings
 from teams_bing_agent.runtime.openai_client import build_project_client as _build_project_client
-from teams_bing_agent.runtime.run import ask_with_conversation
-from teams_bing_agent.runtime.state import ConversationStateStore
+from teams_bing_agent.runtime.activityprotocol_client import send_activity_message
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+load_dotenv(ROOT_DIR / ".env")
 
 
 def build_project_client() -> AIProjectClient:
@@ -39,27 +40,12 @@ def load_questions(path: Path) -> list[dict]:
 
 def run_batch_questions(questions: Iterable[dict]) -> list[dict]:
     results: list[dict] = []
-    state_store = ConversationStateStore()
 
     for item in questions:
         question = item.get("question") if isinstance(item, dict) else str(item)
         teams_conversation_id = f"batch-{uuid.uuid4()}"
 
-        result = None
-        for attempt in range(1, 6):
-            try:
-                result = ask_with_conversation(
-                    question=question,
-                    teams_conversation_id=teams_conversation_id,
-                    state_store=state_store,
-                )
-                break
-            except RateLimitError:
-                wait_seconds = min(2**attempt, 30)
-                time.sleep(wait_seconds)
-
-        if result is None:
-            raise SystemExit("Rate limit retry exceeded.")
+        result = send_activity_message(text=question, conversation_id=teams_conversation_id)
 
         results.append(
             {
@@ -71,8 +57,8 @@ def run_batch_questions(questions: Iterable[dict]) -> list[dict]:
                 "expected_context": (
                     item.get("expected_context") if isinstance(item, dict) else None
                 ),
-                "conversation_id": result.foundry_conversation_id,
-                "response_id": result.response_id,
+                "conversation_id": result.conversation_id,
+                "response_id": None,
             }
         )
     return results

@@ -1,46 +1,32 @@
 # pb-teams-bing-agent
 
-Minimal Microsoft Teams bot in Python that forwards incoming Teams message activities to an Azure AI Foundry Agents v2 agent and returns the final response.
+Path B runtime for Microsoft Teams integration testing: call the **published Azure AI Foundry ActivityProtocol endpoint directly** (no local FastAPI hop).
 
 ## What this project includes
 
-- Microsoft 365 Agents SDK + FastAPI endpoint at `/api/messages`
-- Message-only handler (ignores non-message activities)
-- Azure AI Foundry call via `azure-ai-projects` + `DefaultAzureCredential`
-- Teams conversation ID to Foundry conversation ID mapping (in-memory)
-- Auto-create/reuse of a Foundry agent version with Web Search tool (preview)
-
-This version uses Web Search tool preview for current/public web lookups.
+- Direct ActivityProtocol caller for published Foundry application
+- One-turn and two-turn smoke tests against published endpoint
+- Batch question runner and Foundry evaluation flow
+- Interactive CLI chat mode using one conversation id per session
 
 ## Required environment variables
 
 - `AZURE_AI_PROJECT_ENDPOINT`
-- `FOUNDRY_AGENT_ID`
 - `AZURE_AI_MODEL_DEPLOYMENT_NAME`
+- `FOUNDRY_PUBLISHED_ACTIVITY_ENDPOINT`
 
-Required only for authenticated `/api/messages` testing (`make smoke-auth`):
+Optional:
 
-- `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID`
-- `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET`
-- `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID`
+- `FOUNDRY_AGENT_ID` (kept for compatibility with eval tooling metadata)
+- `FOUNDRY_AI_ACCESS_TOKEN` (if set, skips `az account get-access-token`)
+- `FOUNDRY_PUBLISHED_APP_ID` (used as activity recipient id; defaults to `pb-teams-bing-agent`)
+- Web Search tuning (`WEB_SEARCH_CONTEXT_SIZE`, `WEB_SEARCH_COUNTRY`, etc.)
 
-Optional Web Search Preview tuning:
+## Prerequisites
 
-- `WEB_SEARCH_CONTEXT_SIZE` (`low` | `medium` | `high`)
-- `WEB_SEARCH_COUNTRY`
-- `WEB_SEARCH_REGION`
-- `WEB_SEARCH_CITY`
-- `WEB_SEARCH_TIMEZONE`
-
-Optional compatibility alias supported by config:
-
-- `PROJECT_ENDPOINT` (maps to `AZURE_AI_PROJECT_ENDPOINT`)
-
-Optional compatibility aliases for auth (auto-mapped to `CONNECTIONS__...`):
-
-- `MICROSOFT_APP_ID`
-- `MICROSOFT_APP_PASSWORD`
-- `MICROSOFT_APP_TENANT_ID`
+- Python 3.10+
+- Azure CLI authenticated (`az login`)
+- Access to invoke the published application endpoint
 
 ## Quick start
 
@@ -49,106 +35,42 @@ make venv
 make install
 make env
 # edit .env
-make run
-
-# optional evaluation flow
-make batch
-make evals
-make orchestrate
-```
-
-FastAPI endpoint:
-
-- `POST /api/messages`
-
-## Test locally (Microsoft 365 Agents Playground)
-
-Use this flow to test the full local SDK pipeline without Azure Bot registration complexity.
-
-1. Start the agent server:
-
-```bash
-cd /home/praveen/projects/agents/ai-foundry/aifoundry-agentsv2-demo/agents/50-pb-teams-bing-agent
-make run
-```
-
-2. In another terminal, start the playground:
-
-```bash
-npx -y @microsoft/teams-app-test-tool --app-endpoint http://127.0.0.1:8000/api/messages --channel-id msteams --delivery-mode expectReplies
-```
-
-The tool opens a local browser UI connected to your agent.
-
-Recommended test messages:
-
-- `What is the capital of France?`
-- `And what is the weather there right now?`
-
-Notes:
-
-- `npx` is recommended on Linux to avoid global npm permission issues.
-- Use `make smoke-auth` only when bot app credentials are configured.
-
-## Authenticated smoke test (end-to-end)
-
-1. Start the server in one terminal:
-
-```bash
-make run
-```
-
-2. In another terminal, run:
-
-```bash
-make smoke-auth
-```
-
-This script:
-
-- acquires a bearer token using your bot credentials
-- sends a signed message activity to `/api/messages`
-- checks for successful HTTP response (and prints inline reply when available)
-
-Required auth env values (preferred):
-
-- `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID`
-- `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET`
-- `CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID`
-
-## Anonymous smoke test (local/dev)
-
-Use this when you want to validate the Foundry-backed bot runtime before wiring Azure Bot/Teams registration credentials.
-
-Run:
-
-```bash
 make smoke-anon
 ```
 
-This smoke test is registration-free and executes the same `ask_with_conversation` runtime path directly.
+## Commands
 
-Use `make smoke-auth` when you want to validate the `/api/messages` channel endpoint with signed bearer tokens.
+- `make run` interactive Path B chat client
+- `make smoke-auth` one-turn published-endpoint smoke test
+- `make smoke-anon` two-turn published-endpoint smoke test
+- `make batch` run question dataset and capture outputs
+- `make evals` submit captured dataset to Foundry evaluators
+- `make orchestrate` run `smoke-anon -> batch -> evals`
+- `make e2e-once` alias for `make orchestrate`
 
-## Batch + evaluations
+## Message flow (Path B)
 
-- `make batch` runs questions from `src/teams_bing_agent/evals/datasets/questions.jsonl`
-- Captured outputs are written to `src/teams_bing_agent/evals/datasets/golden_capture.jsonl`
-- `make evals` submits the captured dataset to Foundry evaluators and prints the report URL
-- `make orchestrate` runs `smoke-anon -> batch -> evals` in one command
-- `make e2e-once` is an alias of `make orchestrate`
+1. Client (smoke/batch/interactive) creates an Activity payload.
+2. Script acquires Entra token for `https://ai.azure.com` (unless `FOUNDRY_AI_ACCESS_TOKEN` is supplied).
+3. Script posts activity directly to `FOUNDRY_PUBLISHED_ACTIVITY_ENDPOINT`.
+4. Published Foundry application routes to the configured agent.
+5. Response activities are parsed and saved/printed.
 
-## Message flow
+## Tie this to Teams (Path B)
 
-1. Teams sends message activity to `/api/messages`
-2. Bot extracts text + Teams conversation ID
-3. Runtime resolves or creates Foundry conversation for that Teams conversation
-4. Runtime ensures the Foundry agent version exists (creates it on first run if needed)
-5. Runtime sends user message to Foundry agent reference
-6. Bot returns agent final text back to Teams
+Use Azure Bot Service + Teams channel to route Teams messages to the published Foundry endpoint directly.
+
+1. In Azure Bot Service, enable **Microsoft Teams** channel.
+2. Set bot messaging endpoint to:
+   - `FOUNDRY_PUBLISHED_ACTIVITY_ENDPOINT`
+3. Build and sideload a Teams app package using files under `teams/`.
+
+Detailed step-by-step guide and manifest template:
+
+- `teams/README.md`
+- `teams/manifest.template.json`
 
 ## Notes
 
-- Current mapping store is in-memory for MVP and resets on process restart.
-- Scale-out production deployments should persist mapping in external storage (e.g., Redis/Cosmos DB).
-- The app now wires `MsalConnectionManager`, `Authorization`, and `JwtAuthorizationMiddleware` for production-style Microsoft 365 Agents SDK request validation.
+- This mode intentionally bypasses local FastAPI runtime.
+- For Teams -> custom runtime path (Path A), keep a separate branch or reintroduce `/api/messages` hosting.
