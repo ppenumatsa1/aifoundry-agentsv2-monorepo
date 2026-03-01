@@ -24,23 +24,9 @@ class Settings(BaseSettings):
         default=None,
         validation_alias=AliasChoices("MICROSOFT_APP_PASSWORD"),
     )
-    microsoft_app_tenant_id: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("MICROSOFT_APP_TENANT_ID"),
-    )
-    microsoft_app_type: Literal["SingleTenant", "MultiTenant"] = Field(
-        default="SingleTenant",
-        validation_alias=AliasChoices("MICROSOFT_APP_TYPE"),
-    )
+    microsoft_app_tenant_id: str | None = Field(default=None)
+    microsoft_app_type: Literal["SingleTenant", "MultiTenant"] = Field(default="SingleTenant")
 
-    foundry_agent_endpoint: str | None = Field(
-        default=None,
-        validation_alias=AliasChoices("FOUNDRY_AGENT_ENDPOINT"),
-    )
-    use_managed_identity: bool = Field(
-        default=False,
-        validation_alias=AliasChoices("USE_MANAGED_IDENTITY"),
-    )
     managed_identity_client_id: str | None = Field(
         default=None,
         validation_alias=AliasChoices("MANAGED_IDENTITY_CLIENT_ID"),
@@ -53,8 +39,12 @@ class Settings(BaseSettings):
             "PROJECT_ENDPOINT",
         ),
     )
-    foundry_agent_id: str | None = Field(
+    azure_project_resource_id: str | None = Field(
         default=None,
+        validation_alias=AliasChoices("AZURE_PROJECT_RESOURCE_ID"),
+    )
+    foundry_agent_id: str | None = Field(
+        default="pb-teams-bing-agent",
         validation_alias=AliasChoices(
             "FOUNDRY_AGENT_ID",
             "foundry_agent_id",
@@ -105,9 +95,9 @@ class Settings(BaseSettings):
         "microsoft_app_id",
         "microsoft_app_password",
         "microsoft_app_tenant_id",
-        "foundry_agent_endpoint",
         "managed_identity_client_id",
         "azure_projects_endpoint",
+        "azure_project_resource_id",
         "foundry_agent_id",
         "azure_openai_model",
         "web_search_country",
@@ -130,16 +120,6 @@ class Settings(BaseSettings):
             stripped = value.strip().lower()
             return stripped or None
         return value
-
-    @property
-    def has_bot_credentials(self) -> bool:
-        return bool(
-            self.microsoft_app_id and self.microsoft_app_password and self.microsoft_app_tenant_id
-        )
-
-    @property
-    def should_use_managed_identity(self) -> bool:
-        return self.use_managed_identity
 
 
 @lru_cache(maxsize=1)

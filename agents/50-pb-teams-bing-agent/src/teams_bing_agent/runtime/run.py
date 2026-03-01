@@ -3,23 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from teams_bing_agent.config import get_settings
+from teams_bing_agent.core.prompt_loader import load_prompt_text
 from teams_bing_agent.runtime.openai_client import build_project_client
-from teams_bing_agent.runtime.state import ConversationStateStore
+from teams_bing_agent.runtime.agent import get_or_create_agent
 
 
 @dataclass(frozen=True)
 class AskResult:
     response_text: str
-    teams_conversation_id: str
-    foundry_conversation_id: str
     response_id: str | None
-
-
-AGENT_INSTRUCTIONS = (
-    "You are a helpful Microsoft Teams assistant. "
-    "Answer clearly and concisely. "
-    "Use web search for web lookups when needed, especially for current events and weather."
-)
 
 
 def _extract_response_text(response: object) -> str:
@@ -50,47 +42,18 @@ def _extract_response_text(response: object) -> str:
     return "\n".join(parts).strip()
 
 
-def ask_with_conversation(
-    question: str,
-    teams_conversation_id: str,
-    state_store: ConversationStateStore,
-) -> AskResult:
-    from teams_bing_agent.runtime.agent import get_or_create_agent
-
+def ask(question: str) -> AskResult:
     settings = get_settings()
+    if not settings.azure_projects_endpoint:
+        raise ValueError("AZURE_AI_PROJECT_ENDPOINT must be set")
+
     project_client = build_project_client(settings)
-    agent_name = get_or_create_agent(project_client, settings, AGENT_INSTRUCTIONS)
+    instructions = load_prompt_text()
+    agent_name = get_or_create_agent(project_client, settings, instructions)
 
     with project_client.get_openai_client() as openai_client:
-        foundry_conversation_id = state_store.get_foundry_conversation_id(teams_conversation_id)
-
-        if foundry_conversation_id:
-            openai_client.conversations.items.create(
-                conversation_id=foundry_conversation_id,
-                items=[
-                    {
-                        "type": "message",
-                        "role": "user",
-                        "content": question,
-                    }
-                ],
-            )
-        else:
-            conversation = openai_client.conversations.create(
-                items=[
-                    {
-                        "type": "message",
-                        "role": "user",
-                        "content": question,
-                    }
-                ]
-            )
-            foundry_conversation_id = conversation.id
-            state_store.set_foundry_conversation_id(teams_conversation_id, foundry_conversation_id)
-
         response = openai_client.responses.create(
-            conversation=foundry_conversation_id,
-            input="",
+            input=question,
             extra_body={
                 "agent": {
                     "name": agent_name,
@@ -99,12 +62,10 @@ def ask_with_conversation(
             },
         )
 
-        response_text = _extract_response_text(response)
+        response_text = _extract_response_text(response) or "No response."
         response_id = getattr(response, "id", None)
 
     return AskResult(
         response_text=response_text,
-        teams_conversation_id=teams_conversation_id,
-        foundry_conversation_id=foundry_conversation_id,
         response_id=response_id,
     )

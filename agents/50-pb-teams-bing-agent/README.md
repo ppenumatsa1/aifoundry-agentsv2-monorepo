@@ -1,94 +1,65 @@
 # pb-teams-bing-agent
 
-Production-ready skeleton for Microsoft Teams with a single path:
+Simplified Teams agent runtime aligned with the monorepo structure (`src/`, `scripts/`, `tests/`, `pyproject.toml`, multi-stage `Dockerfile`).
 
-Teams -> Azure Bot Service -> ACA-hosted M365 SDK app -> Azure AI Foundry Agent.
+Flow:
 
-## Architecture
+Teams → Azure Bot Service → FastAPI app (`/api/messages`) → Azure AI Foundry published agent
 
-- Bot App Registration identity handles Teams/Bot authentication only.
-- Azure Container Apps Managed Identity handles Foundry authorization only.
-- No On-Behalf-Of flow.
-- No Foundry client secret in runtime.
+Authentication/authorization:
 
-## Required environment variables
+- Inbound Teams/Bot messages handled by Microsoft Agents SDK hosting components.
+- Outbound Foundry access uses `DefaultAzureCredential` and RBAC (`Azure AI User`).
+- Local development: `az login`.
+- ACA runtime: Managed Identity.
+- No Foundry API keys or client secrets required.
 
-### Bot identity (Azure Bot Service)
+## Environment variables
 
-- `MICROSOFT_APP_ID`
-- `MICROSOFT_APP_PASSWORD`
-- `MICROSOFT_APP_TENANT_ID`
-- `MICROSOFT_APP_TYPE` (default: `SingleTenant`)
+Required:
 
-### Foundry runtime
-
-- `AZURE_AI_PROJECT_ENDPOINT` (or `PROJECT_ENDPOINT`)
+- `AZURE_AI_PROJECT_ENDPOINT`
+- `AZURE_PROJECT_RESOURCE_ID`
 - `AZURE_AI_MODEL_DEPLOYMENT_NAME`
 - `FOUNDRY_AGENT_ID`
+- `MICROSOFT_APP_ID`
+- `MICROSOFT_APP_PASSWORD`
 
 Optional:
 
-- `USE_MANAGED_IDENTITY=true` (force MI locally if needed)
 - `MANAGED_IDENTITY_CLIENT_ID` (for user-assigned MI)
-
-### Local host
-
-- `FASTAPI_HOST` (default: `0.0.0.0`)
-- `FASTAPI_PORT` (default: `8000`)
-
-### Foundry agent creation settings
-
-- `AZURE_AI_PROJECT_ENDPOINT`
-- `FOUNDRY_AGENT_ID` (default: `pb-teams-bing-agent`)
+- `MICROSOFT_APP_TENANT_ID`
+- `MICROSOFT_APP_TYPE` (default `SingleTenant`)
+- `FASTAPI_HOST` (default `0.0.0.0`)
+- `FASTAPI_PORT` (default `8000`)
 
 ## Quick start
 
 ```bash
 make venv
 make install
-make env
-# edit .env
+cp .env.example .env
+# set env values
+az login
 make run
 ```
 
-Messaging endpoint:
+Endpoints:
 
 - `POST /api/messages`
+- `GET /healthz`
 
-## Commands
+## Docker
 
-- `make run` start M365 bot server
-- `make batch` scaffold entrypoint (not implemented yet)
-- `make evals` scaffold entrypoint (not implemented yet)
-- `make orchestrate` scaffold entrypoint (not implemented yet)
-- `make create-agent` create/print Foundry agent from runtime module
-- `make test` run unit tests
+The project keeps a multi-stage `Dockerfile` and starts with:
 
-## Security model
+```bash
+uvicorn teams_bing_agent.app:app --host 0.0.0.0 --port 8000
+```
 
-- Teams auth token is validated by M365 Agents SDK middleware.
-- Foundry token is obtained by backend credential flow:
-  - ACA runtime: `ManagedIdentityCredential`
-  - Local dev: `DefaultAzureCredential` (CLI/user sign-in)
+## RBAC setup
 
-## Azure setup notes
+Assign `Azure AI User` role on the Foundry project/agent scope to:
 
-### Preferred (azd + Bicep)
-
-Set azd env values, then provision:
-
-- `azd env set M365_IMAGE_TAG <image-tag>`
-- `azd env set MICROSOFT_APP_ID <bot-app-id>`
-- `azd env set MICROSOFT_APP_PASSWORD <bot-app-secret>`
-- `azd env set MICROSOFT_APP_TENANT_ID <tenant-id>`
-- `azd env set MICROSOFT_APP_TYPE SingleTenant`
-- `azd env set FOUNDRY_AGENT_ID pb-teams-bing-agent`
-- `azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-4.1-mini`
-- `azd provision`
-
-Outputs include ACA app/bot endpoint values for validation.
-
-### Post-provision
-
-- Enable Microsoft Teams channel on the created Bot Service resource.
-- Validate messaging endpoint is `https://<aca-url>/api/messages`.
+- Your local user principal (for local development)
+- ACA managed identity (for deployed runtime)

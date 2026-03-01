@@ -7,5 +7,7 @@ from teams_bing_agent.config import Settings
 
 
 def build_project_client(settings: Settings) -> AIProjectClient:
-    credential = DefaultAzureCredential()
+    credential = DefaultAzureCredential(
+        managed_identity_client_id=settings.managed_identity_client_id
+    )
     return AIProjectClient(endpoint=settings.azure_projects_endpoint, credential=credential)
