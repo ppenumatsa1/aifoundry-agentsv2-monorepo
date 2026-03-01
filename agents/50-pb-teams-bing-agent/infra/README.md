@@ -1,8 +1,35 @@
-# Provisioning (Simple Bot-First Flow)
+# Provisioning
 
-This folder contains two simple scripts for Teams bot hosting on Azure Container Apps.
+This agent now supports provisioning via root azd + Bicep.
 
-## Defaults
+## Preferred path (azd + Bicep)
+
+From repo root:
+
+```bash
+azd env set M365_IMAGE_TAG <image-tag>
+azd env set MICROSOFT_APP_ID <bot-app-id>
+azd env set MICROSOFT_APP_PASSWORD <bot-app-secret>
+azd env set MICROSOFT_APP_TENANT_ID <tenant-id>
+azd env set MICROSOFT_APP_TYPE SingleTenant
+azd env set FOUNDRY_AGENT_ID pb-teams-bing-agent
+azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-4.1-mini
+azd provision
+```
+
+The M365 module provisions:
+
+- Azure Container Registry (ACR)
+- Azure Container Apps Environment (ACE) bound to Log Analytics Workspace
+- Azure Container App (ACA) with Managed Identity and runtime env vars
+- Azure Bot Service registration
+- Required RBAC assignments (`AcrPull`, `Azure AI User`)
+
+## Legacy temporary scripts
+
+The shell scripts in this folder are retained as temporary fallback helpers and can be removed once Bicep rollout is finalized.
+
+## Script defaults
 
 Both scripts are hardcoded to:
 
@@ -12,7 +39,7 @@ Both scripts are hardcoded to:
 
 Resource names are auto-generated with random suffixes.
 
-## Step 1: Provision Bot and write `MICROSOFT_APP_*`
+## Script step 1: Provision Bot and write `MICROSOFT_APP_*`
 
 ```bash
 make provision-bot
@@ -28,7 +55,7 @@ This runs `infra/provision_bot.sh`, which:
   - `MICROSOFT_APP_TENANT_ID`
   - `MICROSOFT_APP_TYPE`
 
-## Step 2: Provision ACR + ACA app
+## Script step 2: Provision ACR + ACA app
 
 ```bash
 make provision-aca

@@ -3,14 +3,47 @@
 ## Target system
 
 ```text
-User (Teams)
-   -> Azure Bot Service (Bot Registration + Teams channel)
-   -> HTTPS POST /api/messages
-   -> ACA-hosted M365 SDK app (this repo)
-   -> Managed Identity token acquisition
-   -> Azure AI Foundry Agent Endpoint
-   -> LLM + Web Search tool
-   -> Response returns same path back to Teams
+REQUEST / RESPONSE PATH
+
++------------------+      +-------------------------------------+
+| Teams User       | ---> | Azure Bot Service                   |
+| (Teams client)   |      | (Bot Registration + Teams channel)  |
++------------------+      +-------------------------------------+
+                                   |
+                                   | HTTPS POST /api/messages
+                                   v
+                    +-------------------------------------+
+                    | ACA-hosted M365 SDK app             |
+                    | (this repo, FastAPI endpoint)       |
+                    +-------------------------------------+
+                                   |
+                                   | Managed Identity token
+                                   v
+                    +-------------------------------------+
+                    | Azure AI Foundry Agent Endpoint     |
+                    | (LLM + Web Search tool)             |
+                    +-------------------------------------+
+                                   |
+                                   | response text
+                                   v
+                    +-------------------------------------+
+                    | Back through Bot Service to Teams   |
+                    +-------------------------------------+
+
+
+IDENTITY BOUNDARIES
+
++---------------------------------------------------------+
+| Teams/Bot auth boundary                                 |
+| - Bot App Registration identity                         |
+| - JWT validation handled by M365 SDK middleware         |
++---------------------------------------------------------+
+
++---------------------------------------------------------+
+| Foundry access boundary                                 |
+| - ACA Managed Identity                                  |
+| - No OBO flow                                           |
++---------------------------------------------------------+
 ```
 
 ## Identity boundaries

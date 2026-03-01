@@ -22,7 +22,9 @@ Teams -> Azure Bot Service -> ACA-hosted M365 SDK app -> Azure AI Foundry Agent.
 
 ### Foundry runtime
 
-- `FOUNDRY_AGENT_ENDPOINT`
+- `AZURE_AI_PROJECT_ENDPOINT` (or `PROJECT_ENDPOINT`)
+- `AZURE_AI_MODEL_DEPLOYMENT_NAME`
+- `FOUNDRY_AGENT_ID`
 
 Optional:
 
@@ -71,8 +73,22 @@ Messaging endpoint:
 
 ## Azure setup notes
 
-- Create Azure Bot Service registration.
-- Enable Microsoft Teams channel.
-- Set messaging endpoint to `https://<aca-url>/api/messages`.
-- Enable System Assigned Managed Identity on ACA.
-- Grant ACA MI `AI User` role at Foundry project scope.
+### Preferred (azd + Bicep)
+
+Set azd env values, then provision:
+
+- `azd env set M365_IMAGE_TAG <image-tag>`
+- `azd env set MICROSOFT_APP_ID <bot-app-id>`
+- `azd env set MICROSOFT_APP_PASSWORD <bot-app-secret>`
+- `azd env set MICROSOFT_APP_TENANT_ID <tenant-id>`
+- `azd env set MICROSOFT_APP_TYPE SingleTenant`
+- `azd env set FOUNDRY_AGENT_ID pb-teams-bing-agent`
+- `azd env set AZURE_AI_MODEL_DEPLOYMENT_NAME gpt-4.1-mini`
+- `azd provision`
+
+Outputs include ACA app/bot endpoint values for validation.
+
+### Post-provision
+
+- Enable Microsoft Teams channel on the created Bot Service resource.
+- Validate messaging endpoint is `https://<aca-url>/api/messages`.

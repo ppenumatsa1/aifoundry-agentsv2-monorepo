@@ -1,75 +1,72 @@
 CODE FLOW (ASCII ONLY)
 
-+-------------------+
+STARTUP FLOW
+
++--------------------------------------------------+
 | make run |
-+-------------------+
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
-| .venv/bin/python scripts/run_agent.py |
-+------------------------------------------+
++--------------------------------------------------+
+| scripts/run_agent.py |
+| - load_dotenv(.env) |
+| - settings = get_settings() |
+| - uvicorn.run("teams_bing_agent.app:app") |
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
-| load_dotenv(.env) |
-| settings = get_settings() |
-| uvicorn.run("teams_bing_agent.app:app") |
-+------------------------------------------+
-|
-v
-+------------------------------------------+
-| Import teams_bing_agent.app |
-| - configure env mapping |
-| - create FastAPI app + api_app |
-| - auth mode: |
-| _ Msal + JWT middleware OR |
-| _ anonymous fallback |
++--------------------------------------------------+
+| import teams_bing_agent.app |
+| - build FastAPI app + api_app |
+| - configure auth mode |
+| \* MSAL + JWT middleware OR anonymous fallback |
 | - register POST /api/messages |
 | - register message activity handler |
-+------------------------------------------+
++--------------------------------------------------+
+
+REQUEST FLOW (PER MESSAGE)
+
++--------------------------------------------------+
+| Teams -> Bot Service |
+| POST /api/messages |
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
-| Teams/Bot Service POST /api/messages |
-+------------------------------------------+
-|
-v
-+------------------------------------------+
++--------------------------------------------------+
 | start_agent_process(...) |
 | -> dispatch to on_message(...) |
-+------------------------------------------+
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
++--------------------------------------------------+
 | on_message |
-| - read text |
-| - resolve teams_conversation_id |
+| - read user text |
+| - resolve conversation id |
 | - call ask_with_conversation(...) |
-+------------------------------------------+
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
++--------------------------------------------------+
 | ask_with_conversation (runtime/run.py) |
-| - settings = get_settings() |
-| - build_project_client(...) |
-| _ DefaultAzureCredential |
-| _ AIProjectClient(endpoint=...) |
+| - get settings |
+| - build project client |
+| \* DefaultAzureCredential / Managed Identity |
 | - get_or_create_agent(...) |
 | - resolve/create conversation mapping |
 | - openai_client.responses.create(...) |
 | - extract response text |
-+------------------------------------------+
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
-| on_message sends response |
-| context.send_activity(text) |
-+------------------------------------------+
++--------------------------------------------------+
+| on_message |
+| - context.send_activity(response) |
++--------------------------------------------------+
 |
 v
-+------------------------------------------+
++--------------------------------------------------+
 | Response back to Teams user |
-+------------------------------------------+
++--------------------------------------------------+
 
 MAIN FILES
 

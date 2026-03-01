@@ -4,17 +4,48 @@ param location string = 'eastus2'
 @description('Environment name for resource tags')
 param environmentName string = 'dev'
 
-@description('Deploy gpt-4.1-mini model')
-param deployGpt41Mini bool = true
-
-@description('Deploy gpt-5 model (requires region/quota support)')
-param deployGpt5 bool = true
-
-@description('Deploy text-embedding-3-large model')
-param deployTextEmbedding bool = true
-
 @description('Optional user principal object ID for local Search RBAC assignment')
 param userPrincipalId string = ''
+
+@description('Optional existing Foundry account name. When empty, defaults to computed name for this environment.')
+param existingFoundryName string = ''
+
+@description('Optional existing Foundry project name. When empty, defaults to computed name for this environment.')
+param existingFoundryProjectName string = ''
+
+@description('Container image tag for the Teams ACA app')
+param m365ImageTag string = 'latest'
+
+@description('Optional existing ACR name for Teams app image pull')
+param m365AcrName string = ''
+
+@description('Bot app registration client ID')
+param m365BotAppId string = ''
+
+@description('Bot app registration tenant ID')
+param m365BotTenantId string = ''
+
+@description('Bot app type')
+param m365BotAppType string = 'SingleTenant'
+
+@description('Bot app registration client secret')
+@secure()
+param m365BotAppPassword string = ''
+
+@description('Optional existing Azure Bot resource name. When set, updates the existing bot instead of creating a new one.')
+param m365BotName string = ''
+
+@description('Foundry agent id for Teams runtime')
+param m365AgentId string = 'pb-teams-bing-agent'
+
+@description('Model deployment name for Teams runtime')
+param m365ModelDeploymentName string = 'gpt-4.1-mini'
+
+@description('Optional Foundry project endpoint override for Teams runtime')
+param m365FoundryProjectEndpoint string = ''
+
+@description('Optional Log Analytics workspace resource ID override for Teams ACA environment')
+param m365LogAnalyticsWorkspaceResourceId string = ''
 
 @description('Tags applied to all resources')
 param tags object = {
@@ -27,74 +58,127 @@ param tags object = {
 
 var resourceToken = toLower(uniqueString(resourceGroup().id, environmentName))
 var namePrefix = 'aif${resourceToken}'
-var foundryName = '${namePrefix}-foundry'
-var foundryProjectName = '${namePrefix}-proj'
+var defaultFoundryName = '${namePrefix}-foundry'
+var defaultFoundryProjectName = '${namePrefix}-proj'
+var foundryName = empty(existingFoundryName) ? defaultFoundryName : existingFoundryName
+var foundryProjectName = empty(existingFoundryProjectName) ? defaultFoundryProjectName : existingFoundryProjectName
 var searchServiceName = '${namePrefix}-search-basic'
 
-var gpt41MiniDeployment = {
-  name: 'gpt-4.1-mini'
-  modelName: 'gpt-4.1-mini'
-  modelVersion: ''
-  modelPublisherFormat: 'OpenAI'
-  skuName: 'GlobalStandard'
-  capacity: 2000
+// When existingFoundryName is provided we reference pre-existing resources;
+// when empty this is a greenfield environment and we create everything.
+var useExistingFoundry = !empty(existingFoundryName)
+
+var foundryProjectEndpoint = empty(m365FoundryProjectEndpoint)
+  ? 'https://${foundryName}.services.ai.azure.com/api/projects/${foundryProjectName}'
+  : m365FoundryProjectEndpoint
+
+var logAnalyticsWorkspaceResourceId = empty(m365LogAnalyticsWorkspaceResourceId)
+  ? monitoring.outputs.logAnalyticsWorkspaceId
+  : m365LogAnalyticsWorkspaceResourceId
+var logAnalyticsWorkspaceIdSegments = split(logAnalyticsWorkspaceResourceId, '/')
+var logAnalyticsWorkspaceSubscriptionId = length(logAnalyticsWorkspaceIdSegments) > 2
+  ? logAnalyticsWorkspaceIdSegments[2]
+  : subscription().subscriptionId
+var logAnalyticsWorkspaceResourceGroup = length(logAnalyticsWorkspaceIdSegments) > 4
+  ? logAnalyticsWorkspaceIdSegments[4]
+  : resourceGroup().name
+var logAnalyticsWorkspaceName = length(logAnalyticsWorkspaceIdSegments) > 8
+  ? logAnalyticsWorkspaceIdSegments[8]
+  : monitoring.outputs.logAnalyticsWorkspaceName
+
+// ── Path A: reference pre-existing Foundry (day-2 re-run) ───────────────────
+resource foundryExisting 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = if (useExistingFoundry) {
+  name: foundryName
 }
 
-var gpt5Deployment = {
-  name: 'gpt-5'
-  modelName: 'gpt-5'
-  modelVersion: '2025-08-07'
-  modelPublisherFormat: 'OpenAI'
-  skuName: 'GlobalStandard'
-  capacity: 100
+resource foundryProjectExisting 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' existing = if (useExistingFoundry) {
+  name: '${foundryName}/${foundryProjectName}'
 }
 
-var textEmbeddingDeployment = {
-  name: 'text-embed-3-large'
-  modelName: 'text-embedding-3-large'
-  modelVersion: ''
-  modelPublisherFormat: 'OpenAI'
-  skuName: 'GlobalStandard'
-  capacity: 100
+// ── Path B: create Foundry + project + model deployments (greenfield) ────────
+module foundryNew 'modules/foundry-resource.bicep' = if (!useExistingFoundry) {
+  name: 'foundry'
+  params: {
+    name: foundryName
+    location: location
+    tags: tags
+  }
 }
 
-var modelDeployments = union(
-  deployGpt41Mini ? [gpt41MiniDeployment] : [],
-  deployGpt5 ? [gpt5Deployment] : [],
-  deployTextEmbedding ? [textEmbeddingDeployment] : []
-)
+module foundryProjectNew 'modules/foundry-project.bicep' = if (!useExistingFoundry) {
+  name: 'foundryProject'
+  dependsOn: [foundryNew]
+  params: {
+    foundryName: foundryName
+    projectName: foundryProjectName
+    displayName: foundryProjectName
+    projectDescription: 'AI Foundry project for environment ${environmentName}'
+    location: location
+    tags: tags
+  }
+}
+
+module foundryModels 'modules/foundry-models.bicep' = if (!useExistingFoundry) {
+  name: 'foundryModels'
+  dependsOn: [foundryProjectNew]
+  params: {
+    foundryName: foundryName
+    deployments: [
+      {
+        name: 'gpt-4.1-mini'
+        modelName: 'gpt-4.1-mini'
+        modelVersion: '2025-04-14'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: 1000
+      }
+      {
+        name: 'gpt-5'
+        modelName: 'gpt-5'
+        modelVersion: '2025-08-07'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: 100
+      }
+      {
+        name: 'text-embed-3-large'
+        modelName: 'text-embedding-3-large'
+        modelVersion: '1'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: 100
+      }
+      {
+        name: 'gpt-4o'
+        modelName: 'gpt-4o'
+        modelVersion: '2024-08-06'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: 225
+      }
+      {
+        name: 'text-embedding-3-small'
+        modelName: 'text-embedding-3-small'
+        modelVersion: '1'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'Standard'
+        capacity: 120
+      }
+    ]
+  }
+}
+
+// ── Unified resolved values (whichever path was taken) ───────────────────────
+var resolvedFoundryId = useExistingFoundry ? foundryExisting.id : foundryNew.outputs.foundryId
+var resolvedProjectPrincipalId = useExistingFoundry
+  ? foundryProjectExisting.identity.principalId
+  : foundryProjectNew.outputs.projectPrincipalId
 
 module monitoring 'modules/monitoring.bicep' = {
   params: {
     location: location
     tags: tags
     namePrefix: namePrefix
-  }
-}
-
-module foundry 'modules/foundry-resource.bicep' = {
-  params: {
-    location: location
-    tags: tags
-    name: foundryName
-  }
-}
-
-module foundryProject 'modules/foundry-project.bicep' = {
-  params: {
-    location: location
-    tags: tags
-    foundryName: foundry.outputs.foundryName
-    projectName: foundryProjectName
-    displayName: 'AI Agents'
-    projectDescription: 'AI Foundry project for multi-agent workloads.'
-  }
-}
-
-module foundryModels 'modules/foundry-models.bicep' = {
-  params: {
-    foundryName: foundry.outputs.foundryName
-    deployments: modelDeployments
   }
 }
 
@@ -111,20 +195,44 @@ module aiSearch 'modules/ai-search.bicep' = {
 module rbac 'modules/rbac.bicep' = {
   params: {
     searchServiceName: aiSearch.outputs.searchName
-    projectPrincipalId: foundryProject.outputs.projectPrincipalId
+    projectPrincipalId: resolvedProjectPrincipalId
     userPrincipalId: userPrincipalId
+  }
+}
+
+module m365Teams 'modules/m365-teams-agent.bicep' = {
+  name: 'm365TeamsInfra'
+  params: {
+    location: location
+    tags: tags
+    namePrefix: namePrefix
+    foundryName: foundryName
+    foundryProjectEndpoint: foundryProjectEndpoint
+    foundryModelDeploymentName: m365ModelDeploymentName
+    foundryAgentId: m365AgentId
+    acrName: m365AcrName
+    imageTag: m365ImageTag
+    botAppId: m365BotAppId
+    botTenantId: m365BotTenantId
+    botAppType: m365BotAppType
+    botAppPassword: m365BotAppPassword
+    botName: m365BotName
+    logAnalyticsWorkspaceSubscriptionId: logAnalyticsWorkspaceSubscriptionId
+    logAnalyticsWorkspaceResourceGroup: logAnalyticsWorkspaceResourceGroup
+    logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
   }
 }
 
 output location string = location
 output environmentName string = environmentName
-output foundryId string = foundry.outputs.foundryId
-output foundryName string = foundry.outputs.foundryName
-output foundryProjectName string = foundryProject.outputs.projectName
-output foundryProjectPrincipalId string = foundryProject.outputs.projectPrincipalId
-output foundryModelDeploymentNames string[] = foundryModels.outputs.deploymentNames
+output foundryId string = resolvedFoundryId
+output foundryName string = foundryName
+output foundryProjectName string = foundryProjectName
+output foundryProjectPrincipalId string = resolvedProjectPrincipalId
 @secure()
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
+output logAnalyticsWorkspaceResourceId string = monitoring.outputs.logAnalyticsWorkspaceId
+output logAnalyticsWorkspaceName string = monitoring.outputs.logAnalyticsWorkspaceName
 output searchServiceName string = aiSearch.outputs.searchName
 output searchServiceId string = aiSearch.outputs.searchId
 output searchEndpoint string = aiSearch.outputs.searchEndpoint
