@@ -19,6 +19,10 @@ param foundryModelDeploymentName string
 @description('Foundry agent identifier used by app runtime')
 param foundryAgentId string = 'pb-teams-bing-agent'
 
+@description('Optional App Insights connection string for runtime telemetry')
+@secure()
+param appInsightsConnectionString string = ''
+
 @description('Container image repo name in ACR')
 param imageRepository string = 'pb-teams-bing-agent'
 
@@ -82,6 +86,23 @@ var botPasswordSecret = hasBotPassword
       {
         name: 'ms-app-password'
         value: botAppPassword
+      }
+    ]
+  : []
+var hasAppInsightsConnectionString = !empty(appInsightsConnectionString)
+var appInsightsSecret = hasAppInsightsConnectionString
+  ? [
+      {
+        name: 'app-insights-connection-string'
+        value: appInsightsConnectionString
+      }
+    ]
+  : []
+var appInsightsEnv = hasAppInsightsConnectionString
+  ? [
+      {
+        name: 'APP_INSIGHTS_CONNECTION_STRING'
+        secretRef: 'app-insights-connection-string'
       }
     ]
   : []
@@ -163,7 +184,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         transport: 'Auto'
       }
       registries: registriesConfig
-      secrets: botPasswordSecret
+      secrets: concat(botPasswordSecret, appInsightsSecret)
     }
     template: {
       containers: [
@@ -201,7 +222,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
               name: 'FOUNDRY_AGENT_ID'
               value: foundryAgentId
             }
-          ], botPasswordEnv)
+          ], botPasswordEnv, appInsightsEnv)
         }
       ]
       scale: {

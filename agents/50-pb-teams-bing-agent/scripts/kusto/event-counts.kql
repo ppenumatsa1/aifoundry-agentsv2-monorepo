@@ -1,0 +1,12 @@
+traces
+| where timestamp > ago(24h)
+| where message in (
+    "messages_endpoint_completed",
+    "message_completed",
+    "message_failed",
+    "messages_endpoint_failed",
+    "foundry_call_completed",
+    "foundry_call_failed"
+)
+| summarize total=count() by message
+| order by total desc

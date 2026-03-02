@@ -1,0 +1,4 @@
+exceptions
+| where timestamp > ago(24h)
+| project timestamp, type, outerMessage, problemId, innermostMessage, customDimensions
+| order by timestamp desc

@@ -218,6 +218,7 @@ module m365Teams 'modules/m365-teams-agent.bicep' = {
     botAppType: m365BotAppType
     botAppPassword: m365BotAppPassword
     botName: m365BotName
+    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     logAnalyticsWorkspaceSubscriptionId: logAnalyticsWorkspaceSubscriptionId
     logAnalyticsWorkspaceResourceGroup: logAnalyticsWorkspaceResourceGroup
     logAnalyticsWorkspaceName: logAnalyticsWorkspaceName

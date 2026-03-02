@@ -19,6 +19,16 @@ Authentication/authorization:
 - ACA runtime: Managed Identity.
 - No Foundry API keys or client secrets required.
 
+## Simplifications applied (and why)
+
+- Removed custom Bot adapter/auth branching and standardized on Microsoft Agents SDK defaults (`CloudAdapter`, `JwtAuthorizationMiddleware`, `MsalConnectionManager`) to reduce auth edge cases.
+- Kept a single message path (`/api/messages` -> `on_message` -> Foundry call) to simplify debugging and operational tracing.
+- Removed provision-time bootstrap server behavior in ACA and forced image entrypoint usage (`command: []`, `args: []`) so deploy revisions run the real app process.
+- Added direct Foundry batch/eval scripts so local evaluations do not depend on FastAPI/Teams ingress availability.
+- Kept canonical env naming (`AZURE_AI_PROJECT_ENDPOINT`, `AZURE_AI_MODEL_DEPLOYMENT_NAME`, `FOUNDRY_AGENT_ID`, `MICROSOFT_APP_*`) to avoid alias/normalization complexity.
+- Added Teams channel provisioning in IaC to remove manual portal setup drift.
+- Packaged `prompt.md` and added loader fallback to prevent runtime file-not-found failures in deployed container images.
+
 ## Environment variables
 
 Required:
@@ -39,6 +49,49 @@ Optional:
 - `TEAMS_APP_ID` (optional stable Teams manifest id)
 - `FASTAPI_HOST` (default `0.0.0.0`)
 - `FASTAPI_PORT` (default `8000`)
+- `APP_INSIGHTS_CONNECTION_STRING` (enables telemetry/tracing when set)
+- `OTEL_SERVICE_NAME` (default `pb-teams-bing-agent`)
+- `OTEL_SERVICE_VERSION` (default `0.1.0`)
+- `OTEL_CAPTURE_MESSAGE_CONTENT` (default `false`)
+
+## Telemetry (minimal flow)
+
+Telemetry is intentionally light in this first iteration and is enabled only when `APP_INSIGHTS_CONNECTION_STRING` is configured.
+
+Instrumented boundaries:
+
+- FastAPI ingress: `/api/messages`
+- Message processing: Teams activity handler -> Foundry `ask(...)`
+- Foundry call: `responses.create(...)` with latency and response id
+- Tool usage hint: response output item types containing `tool` or `search`
+
+Exception handling:
+
+- Domain errors return structured JSON (`{"error":{"code":"...","message":"..."}}`)
+- Unhandled exceptions return `500` JSON with `internal_error` and are logged with stack trace
+
+Quick App Insights checks (Logs):
+
+Queries are versioned under [scripts/kusto](scripts/kusto):
+
+- [scripts/kusto/business-events.kql](scripts/kusto/business-events.kql)
+- [scripts/kusto/dependency-flow.kql](scripts/kusto/dependency-flow.kql)
+- [scripts/kusto/exceptions.kql](scripts/kusto/exceptions.kql)
+- [scripts/kusto/event-counts.kql](scripts/kusto/event-counts.kql)
+
+Use [scripts/kusto/run-kusto-queries.sh](scripts/kusto/run-kusto-queries.sh) to execute them:
+
+```bash
+agents/50-pb-teams-bing-agent/scripts/kusto/run-kusto-queries.sh \
+  --query-file agents/50-pb-teams-bing-agent/scripts/kusto/business-events.kql \
+  --app-insights aifpv7jq3mklubce-appi \
+  --resource-group rg-fa-dev2
+```
+
+Optional noise controls (not enabled by default):
+
+- keep framework loggers at `WARNING` and app business events at `INFO`
+- apply App Insights sampling only if telemetry volume/cost requires it
 
 ## Quick start
 
@@ -64,6 +117,29 @@ Expected checks:
 ## Infrastructure as Code (IaC)
 
 Provision infrastructure from the repository root using azd.
+
+Canonical azd env vars for this agent:
+
+```sh
+azd env set m365AcrName            <existing-acr-name>   # optional, if reusing an existing ACR
+azd env set m365BotName            <existing-bot-name>   # optional, if reusing an existing Azure Bot resource
+azd env set m365AgentId            pb-teams-bing-agent
+azd env set m365ModelDeploymentName gpt-4.1-mini
+azd env set m365FoundryProjectEndpoint https://<foundry>.services.ai.azure.com/api/projects/<project>   # optional override
+```
+
+Optional bot credential overrides (when you do NOT want auto app-registration):
+
+```sh
+azd env set m365BotAppId           <existing-bot-app-client-id>
+azd env set m365BotAppPassword     <existing-bot-app-client-secret>
+azd env set m365BotTenantId        <tenant-id>
+azd env set m365BotAppType         SingleTenant
+```
+
+If `m365BotAppId` is empty, the preprovision hook creates/reuses an Entra app registration, ensures a service principal, and sets `m365BotAppId`, `m365BotAppPassword`, and `m365BotTenantId` in the azd environment.
+
+App Insights connection string is wired automatically through IaC into Container Apps (`APP_INSIGHTS_CONNECTION_STRING`).
 
 Run from repo root:
 

@@ -1,7 +1,33 @@
-.venv/
-.env
-.foundry/
-.pytest_cache/
+# Python
 __pycache__/
-*.pyc
-devTools/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.dist/
+build/
+dist/
+
+# Virtual environments
+.venv/
+venv/
+
+# Environment files
+.env
+.env.bak
+
+# Tooling caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Agent cache
+.foundry/
+
+# Generated eval capture data
+src/teams_bing_agent/evals/datasets/golden_capture.jsonl
+
+# OS files
+.DS_Store
+Thumbs.db

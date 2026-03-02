@@ -1,0 +1,9 @@
+dependencies
+| where timestamp > ago(24h)
+| where name in (
+    "teams.messages_endpoint",
+    "teams.on_message",
+    "foundry.responses.create"
+)
+| project timestamp, name, target, duration, success, resultCode
+| order by timestamp desc
