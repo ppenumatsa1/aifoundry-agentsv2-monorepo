@@ -38,17 +38,16 @@ def main() -> None:
 
     bot_app_id = env.get("MICROSOFT_APP_ID", "").strip()
     bot_endpoint = env.get("BOT_ENDPOINT", "").strip()
-    if not bot_endpoint:
-        bot_endpoint = "https://teamsbingagentapp-df0189.ashybeach-78f3fcb4.eastus2.azurecontainerapps.io/api/messages"
+    teams_app_id = env.get("TEAMS_APP_ID", "").strip() or str(uuid.uuid4())
 
     if not bot_app_id:
         raise ValueError("MICROSOFT_APP_ID is required in .env")
+    if not bot_endpoint:
+        raise ValueError("BOT_ENDPOINT is required in .env")
 
     bot_domain = urlparse(bot_endpoint).netloc
     if not bot_domain:
         raise ValueError("Invalid BOT_ENDPOINT")
-
-    teams_app_id = str(uuid.uuid4())
 
     manifest = {
         "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
@@ -99,6 +98,20 @@ def main() -> None:
         archive.write(manifest_path, arcname="manifest.json")
         archive.write(PACKAGE_DIR / "color.png", arcname="color.png")
         archive.write(PACKAGE_DIR / "outline.png", arcname="outline.png")
+
+    details_path = BUILD_DIR / "package-details.txt"
+    details_path.write_text(
+        "\n".join(
+            [
+                f"TEAMS_APP_ID={teams_app_id}",
+                f"BOT_APP_ID={bot_app_id}",
+                f"BOT_ENDPOINT={bot_endpoint}",
+                f"ZIP_PATH={OUTPUT_ZIP}",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
 
     print(f"Teams package generated: {OUTPUT_ZIP}")
 

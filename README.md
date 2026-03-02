@@ -72,19 +72,30 @@ The decision is driven entirely by a single Bicep parameter:
 
 The parameter is controlled by the azd environment variable of the same name. You never need to set it manually — `azd provision` writes it to `.env` on first deploy. To start completely fresh, create a new azd environment (`azd env new`), which starts with an empty `.env`.
 
-#### Teams agent (50-pb-teams-bing-agent) — required env vars
+#### Teams agent (50-pb-teams-bing-agent) — canonical azd env vars
 
-The Teams agent requires a pre-registered Azure Bot app. Set these before provisioning:
+Bot app registration and secret can be created automatically by the preprovision hook.
+
+Set these before provisioning:
 
 ```sh
-azd env set MICROSOFT_APP_ID       <bot-app-client-id>
-azd env set MICROSOFT_APP_PASSWORD <bot-app-client-secret>
-azd env set MICROSOFT_APP_TENANT_ID <tenant-id>
-azd env set M365_ACR_NAME          <existing-acr-name>   # if reusing an existing ACR
+azd env set m365AcrName            <existing-acr-name>   # optional, if reusing an existing ACR
 azd env set m365BotName            <existing-bot-name>   # if reusing an existing Azure Bot resource
+azd env set m365AgentId            pb-teams-bing-agent
+azd env set m365ModelDeploymentName gpt-4.1-mini
+azd env set m365FoundryProjectEndpoint https://<foundry>.services.ai.azure.com/api/projects/<project>
 ```
 
-If `MICROSOFT_APP_PASSWORD` is not set, the Bot password secret is omitted from the Container App (useful for Managed Identity bots).
+Optional overrides (when you do NOT want auto app-registration):
+
+```sh
+azd env set m365BotAppId           <existing-bot-app-client-id>
+azd env set m365BotAppPassword     <existing-bot-app-client-secret>
+azd env set m365BotTenantId        <tenant-id>
+azd env set m365BotAppType         SingleTenant
+```
+
+If `m365BotAppId` is empty, preprovision creates/reuses an Entra app registration, creates a service principal, and sets `m365BotAppId`, `m365BotAppPassword`, and `m365BotTenantId` in the azd environment.
 
 ### 3) Set required per-agent secrets
 

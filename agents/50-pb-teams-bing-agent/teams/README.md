@@ -27,8 +27,8 @@ Metadata file:
 ## What it uses
 
 - `MICROSOFT_APP_ID` from `.env`
-- `BOT_ENDPOINT` from `.env` if present
-- fallback endpoint: current ACA endpoint
+- `BOT_ENDPOINT` from `.env` (required)
+- `TEAMS_APP_ID` from `.env` (optional, for stable app id)
 - default icons from `teams/default-color-icon.png` and `teams/default-outline-icon.png`
 
 ## Upload in Teams client

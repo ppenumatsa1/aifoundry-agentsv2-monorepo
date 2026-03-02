@@ -4,6 +4,15 @@ metadata:
 infra:
   provider: bicep
   path: infra
+services:
+  teamsbingagent:
+    project: ./agents/50-pb-teams-bing-agent
+    host: containerapp
+    language: python
+    docker:
+      path: Dockerfile
+      context: .
+      image: pb-teams-bing-agent
 hooks:
   preprovision:
     shell: sh

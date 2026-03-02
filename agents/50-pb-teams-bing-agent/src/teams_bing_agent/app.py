@@ -1,57 +1,51 @@
 from __future__ import annotations
 
 import asyncio
+from os import environ
 from pathlib import Path
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
+from microsoft_agents.activity import load_configuration_from_env
+from microsoft_agents.authentication.msal import MsalConnectionManager
 from microsoft_agents.hosting.fastapi import (
     CloudAdapter,
+    JwtAuthorizationMiddleware,
     start_agent_process,
 )
 from microsoft_agents.hosting.core import (
     AgentApplication,
+    Authorization,
     MemoryStorage,
     MessageFactory,
     TurnContext,
     TurnState,
 )
 
-from teams_bing_agent.config import get_settings
+from teams_bing_agent.config import Settings, get_settings
 from teams_bing_agent.runtime.run import ask
 
 
-class _NoopTokenProvider:
-    async def get_access_token(
-        self, resource_url: str, scopes: list[str], force_refresh: bool = False
-    ) -> str:
-        return "local-dev-token"
-
-    async def acquire_token_on_behalf_of(self, assertion: str, scopes: list[str]):
-        return {"access_token": "local-dev-token"}
-
-    async def get_agentic_application_token(self, scopes: list[str]) -> str:
-        return "local-dev-token"
-
-    async def get_agentic_instance_token(self, scopes: list[str]) -> str:
-        return "local-dev-token"
-
-    async def get_agentic_user_token(self, user_assertion: str, scopes: list[str]) -> str:
-        return "local-dev-token"
+def _is_configured(value: str | None) -> bool:
+    if not value:
+        return False
+    stripped = value.strip()
+    return bool(stripped) and not stripped.startswith("<")
 
 
-class _NoopConnectionManager:
-    def __init__(self) -> None:
-        self._provider = _NoopTokenProvider()
+def _configure_agents_sdk_environment(settings: Settings) -> dict:
+    client_id_key = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID"
+    client_secret_key = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET"
+    tenant_id_key = "CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID"
 
-    def get_connection(self, _connection_name: str):
-        return self._provider
+    if not environ.get(client_id_key) and settings.microsoft_app_id:
+        environ[client_id_key] = settings.microsoft_app_id
+    if not environ.get(client_secret_key) and settings.microsoft_app_password:
+        environ[client_secret_key] = settings.microsoft_app_password
+    if not environ.get(tenant_id_key) and settings.microsoft_app_tenant_id:
+        environ[tenant_id_key] = settings.microsoft_app_tenant_id
 
-    def get_default_connection(self):
-        return self._provider
-
-    def get_token_provider(self, _claims_identity, _service_url: str):
-        return self._provider
+    return load_configuration_from_env(environ)
 
 
 def _load_environment() -> None:
@@ -61,13 +55,38 @@ def _load_environment() -> None:
 
 _load_environment()
 settings = get_settings()
+agents_sdk_config = _configure_agents_sdk_environment(settings)
+
+has_connection_config = bool(agents_sdk_config.get("CONNECTIONS")) and all(
+    [
+        _is_configured(environ.get("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTID")),
+        _is_configured(environ.get("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__CLIENTSECRET")),
+        _is_configured(environ.get("CONNECTIONS__SERVICE_CONNECTION__SETTINGS__TENANTID")),
+    ]
+)
+
 storage = MemoryStorage()
 
 app = FastAPI(title="pb-teams-bing-agent")
 api_app = FastAPI()
 
-adapter = CloudAdapter(connection_manager=_NoopConnectionManager())
-agent_app = AgentApplication[TurnState](storage=storage, adapter=adapter)
+if not has_connection_config:
+    raise ValueError(
+        "MICROSOFT_APP_ID, MICROSOFT_APP_PASSWORD, and MICROSOFT_APP_TENANT_ID must be set"
+    )
+
+connection_manager = MsalConnectionManager(**agents_sdk_config)
+api_app.add_middleware(JwtAuthorizationMiddleware)
+api_app.state.agent_configuration = connection_manager.get_default_connection_configuration()
+
+adapter = CloudAdapter(connection_manager=connection_manager)
+authorization = Authorization(storage, connection_manager, **agents_sdk_config)
+agent_app = AgentApplication[TurnState](
+    storage=storage,
+    adapter=adapter,
+    authorization=authorization,
+    **agents_sdk_config,
+)
 
 
 @agent_app.activity("message")

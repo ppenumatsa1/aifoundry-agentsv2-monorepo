@@ -1,1 +1,1 @@
-__all__: list[str] = []
+"""Core utilities for the Teams Bing agent."""

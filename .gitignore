@@ -20,7 +20,16 @@ venv/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.ruff.cache/
 devTools/
+
+# Editor settings
+.vscode/
+
+# Generated Bicep build outputs
+infra/*.json
+infra/modules/*.json
+!infra/main.parameters.json
 
 # Azure / azd
 .azure/

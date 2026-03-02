@@ -51,6 +51,12 @@ make run
       -> load .env
       -> uvicorn teams_bing_agent.app:app
           -> FastAPI app mounted at /api/messages
+
+Deployed startup (ACA)
+  -> Container image entrypoint from Dockerfile CMD
+     (command/args overrides are intentionally empty in ACA template)
+  -> uvicorn teams_bing_agent.app:app
+  -> /healthz and /api/messages served on port 8000
 ```
 
 ## Request flow with file + method mapping
@@ -87,9 +93,26 @@ Teams/Bot Service
 - `src/teams_bing_agent/runtime/agent.py`: agent get/create + web-search tool wiring
 - `src/teams_bing_agent/core/prompt_loader.py`: instruction loading from `prompt.md`
 
+## Deployment and packaging flow
+
+```text
+Repo root
+  -> azd provision --preview
+  -> azd provision
+  -> azd deploy
+    -> builds/pushes app image to ACR
+    -> updates ACA revision
+
+agents/50-pb-teams-bing-agent
+  -> make teams-package
+    -> teams/build_teams_package.py reads .env
+    -> writes teams/build/teams-app-package.zip
+    -> upload zip to Teams Developer Portal
+```
+
 ## Simplifications applied
 
-- MSAL connection-manager branches
-- Explicit JWT middleware wiring branch logic
-- Teams-to-Foundry conversation mapping state store
-- Dynamic Foundry agent version creation path
+- Removed provision-time bootstrap server pattern; runtime now always uses app image entrypoint.
+- Consolidated infra under root `infra/` + `azd` flow.
+- Added Teams channel provisioning in IaC (`MsTeamsChannel`) to remove portal-only manual step.
+- Kept minimal FastAPI + Microsoft Agents hosting path (`/api/messages` + auth middleware).

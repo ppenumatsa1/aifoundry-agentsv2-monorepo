@@ -16,6 +16,29 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    app_insights_connection_string: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(
+            "APP_INSIGHTS_CONNECTION_STRING",
+            "app_insights_connection_string",
+        ),
+    )
+    otel_service_name: str = Field(
+        default="pb-teams-bing-agent",
+        validation_alias=AliasChoices("OTEL_SERVICE_NAME", "otel_service_name"),
+    )
+    otel_service_version: str = Field(
+        default="0.1.0",
+        validation_alias=AliasChoices("OTEL_SERVICE_VERSION", "otel_service_version"),
+    )
+    otel_capture_message_content: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "OTEL_CAPTURE_MESSAGE_CONTENT",
+            "otel_capture_message_content",
+        ),
+    )
+
     microsoft_app_id: str | None = Field(
         default=None,
         validation_alias=AliasChoices("MICROSOFT_APP_ID"),

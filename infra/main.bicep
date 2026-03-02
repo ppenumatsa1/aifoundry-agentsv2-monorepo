@@ -92,7 +92,8 @@ resource foundryExisting 'Microsoft.CognitiveServices/accounts@2025-04-01-previe
 }
 
 resource foundryProjectExisting 'Microsoft.CognitiveServices/accounts/projects@2025-04-01-preview' existing = if (useExistingFoundry) {
-  name: '${foundryName}/${foundryProjectName}'
+  name: foundryProjectName
+  parent: foundryExisting
 }
 
 // ── Path B: create Foundry + project + model deployments (greenfield) ────────
@@ -169,10 +170,10 @@ module foundryModels 'modules/foundry-models.bicep' = if (!useExistingFoundry) {
 }
 
 // ── Unified resolved values (whichever path was taken) ───────────────────────
-var resolvedFoundryId = useExistingFoundry ? foundryExisting.id : foundryNew.outputs.foundryId
+var resolvedFoundryId = useExistingFoundry ? foundryExisting!.id : foundryNew!.outputs.foundryId
 var resolvedProjectPrincipalId = useExistingFoundry
-  ? foundryProjectExisting.identity.principalId
-  : foundryProjectNew.outputs.projectPrincipalId
+  ? foundryProjectExisting!.identity.principalId
+  : foundryProjectNew!.outputs.projectPrincipalId
 
 module monitoring 'modules/monitoring.bicep' = {
   params: {
@@ -237,3 +238,6 @@ output searchServiceName string = aiSearch.outputs.searchName
 output searchServiceId string = aiSearch.outputs.searchId
 output searchEndpoint string = aiSearch.outputs.searchEndpoint
 output searchServicePrincipalId string = aiSearch.outputs.searchPrincipalId
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = m365Teams.outputs.acrLoginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = m365Teams.outputs.acrName
+output SERVICE_TEAMSBINGAGENT_RESOURCE_ID string = resourceId('Microsoft.App/containerApps', m365Teams.outputs.acaAppName)

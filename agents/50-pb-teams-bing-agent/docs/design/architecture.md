@@ -5,6 +5,7 @@
 ```text
 Teams User
   -> Azure Bot Service
+    -> Teams channel (MsTeamsChannel)
     -> ACA-hosted FastAPI app (/api/messages)
       -> Azure AI Foundry Published Agent (via AZURE_AI_PROJECT_ENDPOINT)
         -> response back through Bot Service to Teams
@@ -39,9 +40,18 @@ Teams User
 - `runtime/run.py`: single-turn request to published agent
 - `runtime/agent.py`: published agent name resolver
 
+## Infrastructure/runtime implementation notes
+
+- Bot Service, Teams channel, ACA app, and ACR wiring are provisioned from root `infra/` (`modules/m365-teams-agent.bicep`).
+- ACA pulls app image from ACR using system-assigned managed identity with `AcrPull` role.
+- ACA template explicitly sets `command: []` and `args: []` so container uses Dockerfile `CMD` (`uvicorn ...`).
+- Bot app secret is injected as ACA secret (`ms-app-password`) and exposed as `MICROSOFT_APP_PASSWORD`.
+
 ## Operational notes
 
 - `AZURE_AI_PROJECT_ENDPOINT` is used as the canonical project endpoint.
 - `AZURE_PROJECT_RESOURCE_ID` and `AZURE_AI_MODEL_DEPLOYMENT_NAME` remain in config for alignment with other projects.
 - Multi-stage Docker build is preserved.
 - `.gitignore` and `.dockerignore` are preserved.
+- Runtime health validation: `GET /healthz` should return `200` and `{"status":"ok"}`.
+- Bot endpoint authorization validation: unauthenticated `POST /api/messages` should return `401`.

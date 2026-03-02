@@ -14,8 +14,8 @@ help:
 	@echo "  make orchestrate  Placeholder: orchestration scaffold"
 	@echo "  make e2e-once     Alias for orchestrate"
 	@echo "  make create-agent Create/print Foundry agent with web_search + gpt-4o-mini"
-	@echo "  make provision-bot Provision Azure Bot + write MICROSOFT_APP_* to .env"
-	@echo "  make provision-aca Provision ACR + ACA env + ACA app (bot-first flow)"
+	@echo "  make provision-bot Provision from repo root via canonical azd env vars"
+	@echo "  make provision-aca Alias of provision-bot"
 	@echo "  make teams-package Build Teams app zip under teams/build/"
 	@echo "  make test         Run unit tests"
 	@echo "  make clean        Remove venv and cache artifacts"
@@ -48,10 +48,10 @@ create-agent:
 	$(PY) -m teams_bing_agent.runtime.agent
 
 provision-aca:
-	bash infra/provision_aca.sh
+	cd ../.. && azd provision --preview && azd provision
 
 provision-bot:
-	bash infra/provision_bot.sh
+	cd ../.. && azd provision --preview && azd provision
 
 teams-package:
 	python3 teams/build_teams_package.py

@@ -95,13 +95,13 @@ var botPasswordEnv = hasBotPassword
   : []
 var acrResourceId = resourceId('Microsoft.ContainerRegistry/registries', resolvedAcrName)
 var acrLoginServer = reference(acrResourceId, '2023-07-01').loginServer
-var acrCredentials = listCredentials(acrResourceId, '2023-07-01')
-var acrRegistrySecret = [
+var registriesConfig = [
   {
-    name: 'acr-password'
-    value: acrCredentials.passwords[0].value
+    server: acrLoginServer
+    identity: 'system'
   }
 ]
+var runtimeImage = '${acrLoginServer}/${imageRepository}:${imageTag}'
 
 resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
   name: foundryName
@@ -147,7 +147,9 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: resolvedAcaAppName
   location: location
-  tags: tags
+  tags: union(tags, {
+    'azd-service-name': 'teamsbingagent'
+  })
   identity: {
     type: 'SystemAssigned'
   }
@@ -160,20 +162,16 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
         targetPort: 8000
         transport: 'Auto'
       }
-      registries: [
-        {
-          server: acrLoginServer
-          username: acrCredentials.username
-          passwordSecretRef: 'acr-password'
-        }
-      ]
-      secrets: concat(botPasswordSecret, acrRegistrySecret)
+      registries: registriesConfig
+      secrets: botPasswordSecret
     }
     template: {
       containers: [
         {
           name: resolvedAcaAppName
-          image: '${acrLoginServer}/${imageRepository}:${imageTag}'
+          image: runtimeImage
+          command: []
+          args: []
           resources: {
             cpu: json('0.5')
             memory: '1Gi'
@@ -261,6 +259,14 @@ resource botService 'Microsoft.BotService/botServices@2022-09-15' = {
     publicNetworkAccess: 'Enabled'
     disableLocalAuth: false
     isStreamingSupported: false
+  }
+}
+
+resource teamsChannel 'Microsoft.BotService/botServices/channels@2022-09-15' = {
+  parent: botService
+  name: 'MsTeamsChannel'
+  properties: {
+    channelName: 'MsTeamsChannel'
   }
 }
 

@@ -26,7 +26,7 @@ venv/
 .foundry/
 
 # Generated eval capture data
-src/invoice_assistant/evals/datasets/golden_capture.jsonl
+src/mcp_agent/evals/datasets/golden_capture.jsonl
 
 # OS files
 .DS_Store
