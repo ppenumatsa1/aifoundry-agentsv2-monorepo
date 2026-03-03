@@ -17,6 +17,9 @@
     "m365ImageTag": {
       "value": "${m365ImageTag}"
     },
+    "m365ServiceImageName": {
+      "value": "${SERVICE_TEAMSBINGAGENT_IMAGE_NAME}"
+    },
     "m365BotAppId": {
       "value": "${m365BotAppId}"
     },
@@ -43,6 +46,21 @@
     },
     "m365LogAnalyticsWorkspaceResourceId": {
       "value": "${m365LogAnalyticsWorkspaceResourceId}"
+    },
+    "searchSkuName": {
+      "value": "${searchSkuName}"
+    },
+    "textEmbedding3SmallCapacity": {
+      "value": "${textEmbedding3SmallCapacity}"
+    },
+    "gpt4oCapacity": {
+      "value": "${gpt4oCapacity}"
+    },
+    "gpt41MiniCapacity": {
+      "value": "${gpt41MiniCapacity}"
+    },
+    "textEmbedding3LargeCapacity": {
+      "value": "${textEmbedding3LargeCapacity}"
     }
   }
 }

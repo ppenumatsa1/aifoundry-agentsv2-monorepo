@@ -27,7 +27,13 @@ param appInsightsConnectionString string = ''
 param imageRepository string = 'pb-teams-bing-agent'
 
 @description('Container image tag')
-param imageTag string = 'latest'
+param imageTag string = ''
+
+@description('Bootstrap image used during provision before azd deploy publishes app image')
+param bootstrapImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+
+@description('Resolved service image name from azd deploy output (when available)')
+param serviceImageName string = ''
 
 @description('Azure Bot App registration client ID')
 param botAppId string
@@ -122,7 +128,47 @@ var registriesConfig = [
     identity: 'system'
   }
 ]
-var runtimeImage = '${acrLoginServer}/${imageRepository}:${imageTag}'
+var useAcrRegistry = !empty(serviceImageName) || !empty(imageTag)
+var runtimeImage = !empty(serviceImageName)
+  ? serviceImageName
+  : (empty(imageTag) ? bootstrapImage : '${acrLoginServer}/${imageRepository}:${imageTag}')
+var targetPort = 80
+var containerEnv = concat([
+  {
+    name: 'MICROSOFT_APP_ID'
+    value: botAppId
+  }
+  {
+    name: 'MICROSOFT_APP_TENANT_ID'
+    value: botTenantId
+  }
+  {
+    name: 'MICROSOFT_APP_TYPE'
+    value: botAppType
+  }
+  {
+    name: 'AZURE_AI_PROJECT_ENDPOINT'
+    value: foundryProjectEndpoint
+  }
+  {
+    name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME'
+    value: foundryModelDeploymentName
+  }
+  {
+    name: 'FOUNDRY_AGENT_ID'
+    value: foundryAgentId
+  }
+], botPasswordEnv, appInsightsEnv)
+var containerResources = {
+  cpu: json('0.5')
+  memory: '1Gi'
+}
+var runtimeContainer = {
+  name: resolvedAcaAppName
+  image: runtimeImage
+  resources: containerResources
+  env: containerEnv
+}
 
 resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
   name: foundryName
@@ -180,50 +226,15 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       activeRevisionsMode: 'Single'
       ingress: {
         external: true
-        targetPort: 8000
+        targetPort: targetPort
         transport: 'Auto'
       }
-      registries: registriesConfig
+      registries: useAcrRegistry ? registriesConfig : []
       secrets: concat(botPasswordSecret, appInsightsSecret)
     }
     template: {
       containers: [
-        {
-          name: resolvedAcaAppName
-          image: runtimeImage
-          command: []
-          args: []
-          resources: {
-            cpu: json('0.5')
-            memory: '1Gi'
-          }
-          env: concat([
-            {
-              name: 'MICROSOFT_APP_ID'
-              value: botAppId
-            }
-            {
-              name: 'MICROSOFT_APP_TENANT_ID'
-              value: botTenantId
-            }
-            {
-              name: 'MICROSOFT_APP_TYPE'
-              value: botAppType
-            }
-            {
-              name: 'AZURE_AI_PROJECT_ENDPOINT'
-              value: foundryProjectEndpoint
-            }
-            {
-              name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME'
-              value: foundryModelDeploymentName
-            }
-            {
-              name: 'FOUNDRY_AGENT_ID'
-              value: foundryAgentId
-            }
-          ], botPasswordEnv, appInsightsEnv)
-        }
+        runtimeContainer
       ]
       scale: {
         minReplicas: 1
@@ -286,6 +297,7 @@ resource botService 'Microsoft.BotService/botServices@2022-09-15' = {
 resource teamsChannel 'Microsoft.BotService/botServices/channels@2022-09-15' = {
   parent: botService
   name: 'MsTeamsChannel'
+  location: 'global'
   properties: {
     channelName: 'MsTeamsChannel'
   }

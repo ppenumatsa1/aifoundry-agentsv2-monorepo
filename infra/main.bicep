@@ -14,7 +14,10 @@ param existingFoundryName string = ''
 param existingFoundryProjectName string = ''
 
 @description('Container image tag for the Teams ACA app')
-param m365ImageTag string = 'latest'
+param m365ImageTag string = ''
+
+@description('Resolved service image name from azd deploy output for Teams ACA app')
+param m365ServiceImageName string = ''
 
 @description('Optional existing ACR name for Teams app image pull')
 param m365AcrName string = ''
@@ -46,6 +49,21 @@ param m365FoundryProjectEndpoint string = ''
 
 @description('Optional Log Analytics workspace resource ID override for Teams ACA environment')
 param m365LogAnalyticsWorkspaceResourceId string = ''
+
+@description('Azure AI Search SKU for this environment (free has a subscription-wide limit of 1)')
+param searchSkuName string = 'basic'
+
+@description('Capacity for text-embedding-3-small deployment (in TPM thousands)')
+param textEmbedding3SmallCapacity int = 120
+
+@description('Capacity for gpt-4o deployment (in TPM thousands)')
+param gpt4oCapacity int = 200
+
+@description('Capacity for gpt-4.1-mini deployment (in TPM thousands)')
+param gpt41MiniCapacity int = 1000
+
+@description('Capacity for text-embedding-3-large deployment (in TPM thousands)')
+param textEmbedding3LargeCapacity int = 100
 
 @description('Tags applied to all resources')
 param tags object = {
@@ -86,6 +104,45 @@ var logAnalyticsWorkspaceName = length(logAnalyticsWorkspaceIdSegments) > 8
   ? logAnalyticsWorkspaceIdSegments[8]
   : monitoring.outputs.logAnalyticsWorkspaceName
 
+var optionalGpt4oDeployment = gpt4oCapacity > 0
+  ? [
+      {
+        name: 'gpt-4o'
+        modelName: 'gpt-4o'
+        modelVersion: '2024-08-06'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: gpt4oCapacity
+      }
+    ]
+  : []
+
+var optionalTextEmbedding3LargeDeployment = textEmbedding3LargeCapacity > 0
+  ? [
+      {
+        name: 'text-embed-3-large'
+        modelName: 'text-embedding-3-large'
+        modelVersion: '1'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: textEmbedding3LargeCapacity
+      }
+    ]
+  : []
+
+var optionalTextEmbedding3SmallDeployment = textEmbedding3SmallCapacity > 0
+  ? [
+      {
+        name: 'text-embedding-3-small'
+        modelName: 'text-embedding-3-small'
+        modelVersion: '1'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'Standard'
+        capacity: textEmbedding3SmallCapacity
+      }
+    ]
+  : []
+
 // ── Path A: reference pre-existing Foundry (day-2 re-run) ───────────────────
 resource foundryExisting 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = if (useExistingFoundry) {
   name: foundryName
@@ -124,48 +181,29 @@ module foundryModels 'modules/foundry-models.bicep' = if (!useExistingFoundry) {
   dependsOn: [foundryProjectNew]
   params: {
     foundryName: foundryName
-    deployments: [
-      {
-        name: 'gpt-4.1-mini'
-        modelName: 'gpt-4.1-mini'
-        modelVersion: '2025-04-14'
-        modelPublisherFormat: 'OpenAI'
-        skuName: 'GlobalStandard'
-        capacity: 1000
-      }
-      {
-        name: 'gpt-5'
-        modelName: 'gpt-5'
-        modelVersion: '2025-08-07'
-        modelPublisherFormat: 'OpenAI'
-        skuName: 'GlobalStandard'
-        capacity: 100
-      }
-      {
-        name: 'text-embed-3-large'
-        modelName: 'text-embedding-3-large'
-        modelVersion: '1'
-        modelPublisherFormat: 'OpenAI'
-        skuName: 'GlobalStandard'
-        capacity: 100
-      }
-      {
-        name: 'gpt-4o'
-        modelName: 'gpt-4o'
-        modelVersion: '2024-08-06'
-        modelPublisherFormat: 'OpenAI'
-        skuName: 'GlobalStandard'
-        capacity: 225
-      }
-      {
-        name: 'text-embedding-3-small'
-        modelName: 'text-embedding-3-small'
-        modelVersion: '1'
-        modelPublisherFormat: 'OpenAI'
-        skuName: 'Standard'
-        capacity: 120
-      }
-    ]
+    deployments: concat(
+      [
+        {
+          name: 'gpt-4.1-mini'
+          modelName: 'gpt-4.1-mini'
+          modelVersion: '2025-04-14'
+          modelPublisherFormat: 'OpenAI'
+          skuName: 'GlobalStandard'
+          capacity: gpt41MiniCapacity
+        }
+        {
+          name: 'gpt-5'
+          modelName: 'gpt-5'
+          modelVersion: '2025-08-07'
+          modelPublisherFormat: 'OpenAI'
+          skuName: 'GlobalStandard'
+          capacity: 100
+        }
+      ],
+      optionalTextEmbedding3LargeDeployment,
+      optionalGpt4oDeployment,
+      optionalTextEmbedding3SmallDeployment
+    )
   }
 }
 
@@ -189,7 +227,7 @@ module aiSearch 'modules/ai-search.bicep' = {
     tags: tags
     namePrefix: namePrefix
     searchServiceName: searchServiceName
-    skuName: 'free'
+    skuName: searchSkuName
   }
 }
 
@@ -213,6 +251,7 @@ module m365Teams 'modules/m365-teams-agent.bicep' = {
     foundryAgentId: m365AgentId
     acrName: m365AcrName
     imageTag: m365ImageTag
+    serviceImageName: m365ServiceImageName
     botAppId: m365BotAppId
     botTenantId: m365BotTenantId
     botAppType: m365BotAppType
