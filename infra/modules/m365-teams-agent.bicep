@@ -1,3 +1,18 @@
+// ── Provision-time module: stable infra that does NOT include the Container App ──
+// ACA is created at deploy-time (via aca.bicep called from the predeploy hook) once
+// the real runtime image is available in ACR.  This avoids placeholder-image races
+// and ARM revision-provisioning timeouts entirely.
+//
+// What lives here:
+//   • ACR  (image registry)
+//   • ACA Managed Environment  (compute substrate)
+//   • User-Assigned Managed Identity (UAMI) pre-wired with AcrPull + Foundry AI User
+//   • Bot Service + Teams Channel  (endpoint is predictable from managedEnvironment.defaultDomain)
+//
+// What lives in aca.bicep (deploy-time):
+//   • Container App  (created/updated with the real runtime image)
+//   • Bot Service endpoint update  (synced to actual ACA FQDN)
+
 @description('Location for all resources')
 param location string
 
@@ -7,33 +22,8 @@ param tags object = {}
 @description('Name prefix used for resource naming')
 param namePrefix string
 
-@description('Existing Foundry account name used as RBAC scope')
+@description('Existing Foundry account name — used to pre-assign Foundry AI User role to UAMI')
 param foundryName string
-
-@description('Foundry project endpoint used by app runtime')
-param foundryProjectEndpoint string
-
-@description('Model deployment name used by app runtime')
-param foundryModelDeploymentName string
-
-@description('Foundry agent identifier used by app runtime')
-param foundryAgentId string = 'pb-teams-bing-agent'
-
-@description('Optional App Insights connection string for runtime telemetry')
-@secure()
-param appInsightsConnectionString string = ''
-
-@description('Container image repo name in ACR')
-param imageRepository string = 'pb-teams-bing-agent'
-
-@description('Container image tag')
-param imageTag string = ''
-
-@description('Bootstrap image used during provision before azd deploy publishes app image')
-param bootstrapImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-
-@description('Resolved service image name from azd deploy output (when available)')
-param serviceImageName string = ''
 
 @description('Azure Bot App registration client ID')
 param botAppId string
@@ -49,17 +39,13 @@ param botTenantId string
 ])
 param botAppType string = 'SingleTenant'
 
-@description('Azure Bot app password / client secret')
-@secure()
-param botAppPassword string
-
 @description('Optional override for ACR name')
 param acrName string = ''
 
 @description('Optional override for ACA managed environment name')
 param acaEnvironmentName string = ''
 
-@description('Optional override for ACA app name')
+@description('Optional override for ACA app name — used to compute the predictable bot endpoint FQDN')
 param acaAppName string = ''
 
 @description('Optional override for Azure Bot resource name')
@@ -80,95 +66,16 @@ param acrPullRoleDefinitionId string = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
 @description('Role definition ID for Azure AI User')
 param azureAiUserRoleDefinitionId string = '53ca6127-db72-4b80-b1b0-d745d6d5456d'
 
+// ── Name resolution ────────────────────────────────────────────────────────────
 var useExistingAcr = !empty(acrName)
 var resolvedAcrName = toLower(empty(acrName) ? take(replace('${namePrefix}tacr', '-', ''), 50) : acrName)
 var resolvedAcaEnvironmentName = empty(acaEnvironmentName) ? '${namePrefix}-ace' : acaEnvironmentName
 var resolvedAcaAppName = empty(acaAppName) ? '${namePrefix}-teamsapp' : acaAppName
 var resolvedBotName = empty(botName) ? '${namePrefix}-bot' : botName
-var botEndpoint = 'https://${containerApp.properties.configuration.ingress.fqdn}/api/messages'
-var hasBotPassword = !empty(botAppPassword)
-var botPasswordSecret = hasBotPassword
-  ? [
-      {
-        name: 'ms-app-password'
-        value: botAppPassword
-      }
-    ]
-  : []
-var hasAppInsightsConnectionString = !empty(appInsightsConnectionString)
-var appInsightsSecret = hasAppInsightsConnectionString
-  ? [
-      {
-        name: 'app-insights-connection-string'
-        value: appInsightsConnectionString
-      }
-    ]
-  : []
-var appInsightsEnv = hasAppInsightsConnectionString
-  ? [
-      {
-        name: 'APP_INSIGHTS_CONNECTION_STRING'
-        secretRef: 'app-insights-connection-string'
-      }
-    ]
-  : []
-var botPasswordEnv = hasBotPassword
-  ? [
-      {
-        name: 'MICROSOFT_APP_PASSWORD'
-        secretRef: 'ms-app-password'
-      }
-    ]
-  : []
+var resolvedUamiName = '${namePrefix}-uami'
 var acrResourceId = resourceId('Microsoft.ContainerRegistry/registries', resolvedAcrName)
-var acrLoginServer = reference(acrResourceId, '2023-07-01').loginServer
-var registriesConfig = [
-  {
-    server: acrLoginServer
-    identity: 'system'
-  }
-]
-var useAcrRegistry = !empty(serviceImageName) || !empty(imageTag)
-var runtimeImage = !empty(serviceImageName)
-  ? serviceImageName
-  : (empty(imageTag) ? bootstrapImage : '${acrLoginServer}/${imageRepository}:${imageTag}')
-var targetPort = 80
-var containerEnv = concat([
-  {
-    name: 'MICROSOFT_APP_ID'
-    value: botAppId
-  }
-  {
-    name: 'MICROSOFT_APP_TENANT_ID'
-    value: botTenantId
-  }
-  {
-    name: 'MICROSOFT_APP_TYPE'
-    value: botAppType
-  }
-  {
-    name: 'AZURE_AI_PROJECT_ENDPOINT'
-    value: foundryProjectEndpoint
-  }
-  {
-    name: 'AZURE_AI_MODEL_DEPLOYMENT_NAME'
-    value: foundryModelDeploymentName
-  }
-  {
-    name: 'FOUNDRY_AGENT_ID'
-    value: foundryAgentId
-  }
-], botPasswordEnv, appInsightsEnv)
-var containerResources = {
-  cpu: json('0.5')
-  memory: '1Gi'
-}
-var runtimeContainer = {
-  name: resolvedAcaAppName
-  image: runtimeImage
-  resources: containerResources
-  env: containerEnv
-}
+
+// ── Existing references ────────────────────────────────────────────────────────
 
 resource foundry 'Microsoft.CognitiveServices/accounts@2025-04-01-preview' existing = {
   name: foundryName
@@ -182,6 +89,8 @@ resource logAnalyticsWorkspace 'Microsoft.OperationalInsights/workspaces@2022-10
 resource existingAcr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = if (useExistingAcr) {
   name: resolvedAcrName
 }
+
+// ── Resources ──────────────────────────────────────────────────────────────────
 
 resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' = if (!useExistingAcr) {
   name: resolvedAcrName
@@ -211,68 +120,50 @@ resource managedEnvironment 'Microsoft.App/managedEnvironments@2024-03-01' = {
   }
 }
 
-resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
-  name: resolvedAcaAppName
+// User-Assigned Managed Identity pre-provisioned with all required roles so
+// there is zero race condition when aca.bicep creates the Container App at deploy time.
+resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
+  name: resolvedUamiName
   location: location
-  tags: union(tags, {
-    'azd-service-name': 'teamsbingagent'
-  })
-  identity: {
-    type: 'SystemAssigned'
-  }
+  tags: tags
+}
+
+// AcrPull: allows Container App to pull images from ACR via the pre-wired UAMI.
+resource acrPullAssignmentNew 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!useExistingAcr) {
+  name: guid(acrResourceId, uami.id, acrPullRoleDefinitionId)
+  scope: acr
   properties: {
-    managedEnvironmentId: managedEnvironment.id
-    configuration: {
-      activeRevisionsMode: 'Single'
-      ingress: {
-        external: true
-        targetPort: targetPort
-        transport: 'Auto'
-      }
-      registries: useAcrRegistry ? registriesConfig : []
-      secrets: concat(botPasswordSecret, appInsightsSecret)
-    }
-    template: {
-      containers: [
-        runtimeContainer
-      ]
-      scale: {
-        minReplicas: 1
-        maxReplicas: 1
-      }
-    }
+    principalId: uami.properties.principalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleDefinitionId)
   }
 }
 
 resource acrPullAssignmentExisting 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (useExistingAcr) {
-  name: guid(acrResourceId, containerApp.id, acrPullRoleDefinitionId)
+  name: guid(acrResourceId, uami.id, acrPullRoleDefinitionId)
   scope: existingAcr
   properties: {
-    principalId: containerApp.identity.principalId
+    principalId: uami.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleDefinitionId)
   }
 }
 
-resource acrPullAssignmentNew 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (!useExistingAcr) {
-  name: guid(acrResourceId, containerApp.id, acrPullRoleDefinitionId)
-  scope: acr
-  properties: {
-    principalId: containerApp.identity.principalId
-    principalType: 'ServicePrincipal'
-    roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', acrPullRoleDefinitionId)
-  }
-}
-
+// Foundry AI User: allows Container App to call Foundry models via the pre-wired UAMI.
 resource foundryAiUserAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(foundry.id, containerApp.id, azureAiUserRoleDefinitionId)
+  name: guid(foundry.id, uami.id, azureAiUserRoleDefinitionId)
   scope: foundry
   properties: {
-    principalId: containerApp.identity.principalId
+    principalId: uami.properties.principalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', azureAiUserRoleDefinitionId)
   }
 }
+
+// Bot endpoint is deterministic: ACA FQDNs follow <appName>.<managedEnvironment.defaultDomain>.
+// This URL is set now so the Bot Service is fully wired at provision time.
+// aca.bicep (deploy-time) performs a reconciling PUT to update it to the live FQDN.
+var botEndpoint = 'https://${resolvedAcaAppName}.${managedEnvironment.properties.defaultDomain}/api/messages'
 
 resource botService 'Microsoft.BotService/botServices@2022-09-15' = {
   name: resolvedBotName
@@ -303,12 +194,17 @@ resource teamsChannel 'Microsoft.BotService/botServices/channels@2022-09-15' = {
   }
 }
 
+// ── Outputs ────────────────────────────────────────────────────────────────────
+
+var acrLoginServer = reference(acrResourceId, '2023-07-01').loginServer
+
 output acrId string = acrResourceId
 output acrName string = resolvedAcrName
 output acrLoginServer string = acrLoginServer
 output acaEnvironmentId string = managedEnvironment.id
 output acaEnvironmentName string = managedEnvironment.name
-output acaAppName string = containerApp.name
-output acaFqdn string = containerApp.properties.configuration.ingress.fqdn
+output acaAppName string = resolvedAcaAppName
 output botName string = botService.name
 output botEndpoint string = botEndpoint
+output uamiId string = uami.id
+output uamiClientId string = uami.properties.clientId

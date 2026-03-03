@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import subprocess
 import uuid
 import zipfile
 from pathlib import Path
@@ -33,17 +34,68 @@ def parse_env(path: Path) -> dict[str, str]:
     return values
 
 
+def run_command(command: list[str]) -> str:
+    completed = subprocess.run(command, check=True, capture_output=True, text=True)
+    return completed.stdout.strip()
+
+
+def resolve_latest_bot_endpoint() -> str:
+    rg = run_command(["azd", "env", "get-value", "AZURE_RESOURCE_GROUP"]).strip('"')
+    aca_name = run_command(["azd", "env", "get-value", "AZURE_ACA_APP_NAME"]).strip('"')
+
+    if not rg or not aca_name:
+        raise ValueError(
+            "Could not resolve AZURE_RESOURCE_GROUP/AZURE_ACA_APP_NAME from azd env. "
+            "Run azd provision first and ensure the correct environment is selected."
+        )
+
+    fqdn = run_command(
+        [
+            "az",
+            "containerapp",
+            "show",
+            "-g",
+            rg,
+            "-n",
+            aca_name,
+            "--query",
+            "properties.configuration.ingress.fqdn",
+            "-o",
+            "tsv",
+        ]
+    )
+
+    if not fqdn:
+        raise ValueError(
+            "Container App FQDN is empty. Ensure ACA ingress is enabled and app is provisioned."
+        )
+
+    return f"https://{fqdn}/api/messages"
+
+
+def resolve_latest_bot_app_id(local_env: dict[str, str]) -> str:
+    try:
+        bot_app_id = run_command(["azd", "env", "get-value", "m365BotAppId"]).strip('"')
+        if bot_app_id:
+            return bot_app_id
+    except Exception:
+        pass
+
+    bot_app_id = local_env.get("MICROSOFT_APP_ID", "").strip()
+    if bot_app_id:
+        return bot_app_id
+
+    raise ValueError(
+        "Could not resolve bot app id from azd env (m365BotAppId) or local .env (MICROSOFT_APP_ID)."
+    )
+
+
 def main() -> None:
     env = parse_env(ENV_FILE)
 
-    bot_app_id = env.get("MICROSOFT_APP_ID", "").strip()
-    bot_endpoint = env.get("BOT_ENDPOINT", "").strip()
+    bot_app_id = resolve_latest_bot_app_id(env)
+    bot_endpoint = resolve_latest_bot_endpoint()
     teams_app_id = env.get("TEAMS_APP_ID", "").strip() or str(uuid.uuid4())
-
-    if not bot_app_id:
-        raise ValueError("MICROSOFT_APP_ID is required in .env")
-    if not bot_endpoint:
-        raise ValueError("BOT_ENDPOINT is required in .env")
 
     bot_domain = urlparse(bot_endpoint).netloc
     if not bot_domain:

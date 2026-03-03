@@ -2,6 +2,12 @@
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
   "contentVersion": "1.0.0.0",
   "parameters": {
+    "location": {
+      "value": "${AZURE_LOCATION}"
+    },
+    "environmentName": {
+      "value": "${AZURE_ENV_NAME}"
+    },
     "userPrincipalId": {
       "value": "${userPrincipalId}"
     },
@@ -14,17 +20,8 @@
     "m365AcrName": {
       "value": "${m365AcrName}"
     },
-    "m365ImageTag": {
-      "value": "${m365ImageTag}"
-    },
-    "m365ServiceImageName": {
-      "value": "${SERVICE_TEAMSBINGAGENT_IMAGE_NAME}"
-    },
     "m365BotAppId": {
       "value": "${m365BotAppId}"
-    },
-    "m365BotAppPassword": {
-      "value": "${m365BotAppPassword}"
     },
     "m365BotTenantId": {
       "value": "${m365BotTenantId}"
@@ -34,12 +31,6 @@
     },
     "m365BotName": {
       "value": "${m365BotName}"
-    },
-    "m365AgentId": {
-      "value": "${m365AgentId}"
-    },
-    "m365ModelDeploymentName": {
-      "value": "${m365ModelDeploymentName}"
     },
     "m365FoundryProjectEndpoint": {
       "value": "${m365FoundryProjectEndpoint}"
@@ -58,6 +49,9 @@
     },
     "gpt41MiniCapacity": {
       "value": "${gpt41MiniCapacity}"
+    },
+    "gpt5Capacity": {
+      "value": "${gpt5Capacity}"
     },
     "textEmbedding3LargeCapacity": {
       "value": "${textEmbedding3LargeCapacity}"

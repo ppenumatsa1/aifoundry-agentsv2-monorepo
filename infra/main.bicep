@@ -1,8 +1,8 @@
 @description('Location for all resources')
-param location string = 'eastus2'
+param location string
 
 @description('Environment name for resource tags')
-param environmentName string = 'dev'
+param environmentName string
 
 @description('Optional user principal object ID for local Search RBAC assignment')
 param userPrincipalId string = ''
@@ -12,12 +12,6 @@ param existingFoundryName string = ''
 
 @description('Optional existing Foundry project name. When empty, defaults to computed name for this environment.')
 param existingFoundryProjectName string = ''
-
-@description('Container image tag for the Teams ACA app')
-param m365ImageTag string = ''
-
-@description('Resolved service image name from azd deploy output for Teams ACA app')
-param m365ServiceImageName string = ''
 
 @description('Optional existing ACR name for Teams app image pull')
 param m365AcrName string = ''
@@ -31,18 +25,8 @@ param m365BotTenantId string = ''
 @description('Bot app type')
 param m365BotAppType string = 'SingleTenant'
 
-@description('Bot app registration client secret')
-@secure()
-param m365BotAppPassword string = ''
-
 @description('Optional existing Azure Bot resource name. When set, updates the existing bot instead of creating a new one.')
 param m365BotName string = ''
-
-@description('Foundry agent id for Teams runtime')
-param m365AgentId string = 'pb-teams-bing-agent'
-
-@description('Model deployment name for Teams runtime')
-param m365ModelDeploymentName string = 'gpt-4.1-mini'
 
 @description('Optional Foundry project endpoint override for Teams runtime')
 param m365FoundryProjectEndpoint string = ''
@@ -54,13 +38,16 @@ param m365LogAnalyticsWorkspaceResourceId string = ''
 param searchSkuName string = 'basic'
 
 @description('Capacity for text-embedding-3-small deployment (in TPM thousands)')
-param textEmbedding3SmallCapacity int = 120
+param textEmbedding3SmallCapacity int = 100
 
 @description('Capacity for gpt-4o deployment (in TPM thousands)')
-param gpt4oCapacity int = 200
+param gpt4oCapacity int = 100
 
 @description('Capacity for gpt-4.1-mini deployment (in TPM thousands)')
-param gpt41MiniCapacity int = 1000
+param gpt41MiniCapacity int = 100
+
+@description('Capacity for gpt-5 deployment (in TPM thousands)')
+param gpt5Capacity int = 100
 
 @description('Capacity for text-embedding-3-large deployment (in TPM thousands)')
 param textEmbedding3LargeCapacity int = 100
@@ -113,6 +100,19 @@ var optionalGpt4oDeployment = gpt4oCapacity > 0
         modelPublisherFormat: 'OpenAI'
         skuName: 'GlobalStandard'
         capacity: gpt4oCapacity
+      }
+    ]
+  : []
+
+var optionalGpt5Deployment = gpt5Capacity > 0
+  ? [
+      {
+        name: 'gpt-5'
+        modelName: 'gpt-5'
+        modelVersion: '2025-08-07'
+        modelPublisherFormat: 'OpenAI'
+        skuName: 'GlobalStandard'
+        capacity: gpt5Capacity
       }
     ]
   : []
@@ -191,15 +191,8 @@ module foundryModels 'modules/foundry-models.bicep' = if (!useExistingFoundry) {
           skuName: 'GlobalStandard'
           capacity: gpt41MiniCapacity
         }
-        {
-          name: 'gpt-5'
-          modelName: 'gpt-5'
-          modelVersion: '2025-08-07'
-          modelPublisherFormat: 'OpenAI'
-          skuName: 'GlobalStandard'
-          capacity: 100
-        }
       ],
+      optionalGpt5Deployment,
       optionalTextEmbedding3LargeDeployment,
       optionalGpt4oDeployment,
       optionalTextEmbedding3SmallDeployment
@@ -246,18 +239,11 @@ module m365Teams 'modules/m365-teams-agent.bicep' = {
     tags: tags
     namePrefix: namePrefix
     foundryName: foundryName
-    foundryProjectEndpoint: foundryProjectEndpoint
-    foundryModelDeploymentName: m365ModelDeploymentName
-    foundryAgentId: m365AgentId
     acrName: m365AcrName
-    imageTag: m365ImageTag
-    serviceImageName: m365ServiceImageName
     botAppId: m365BotAppId
     botTenantId: m365BotTenantId
     botAppType: m365BotAppType
-    botAppPassword: m365BotAppPassword
     botName: m365BotName
-    appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     logAnalyticsWorkspaceSubscriptionId: logAnalyticsWorkspaceSubscriptionId
     logAnalyticsWorkspaceResourceGroup: logAnalyticsWorkspaceResourceGroup
     logAnalyticsWorkspaceName: logAnalyticsWorkspaceName
@@ -280,4 +266,11 @@ output searchEndpoint string = aiSearch.outputs.searchEndpoint
 output searchServicePrincipalId string = aiSearch.outputs.searchPrincipalId
 output AZURE_CONTAINER_REGISTRY_ENDPOINT string = m365Teams.outputs.acrLoginServer
 output AZURE_CONTAINER_REGISTRY_NAME string = m365Teams.outputs.acrName
+output AZURE_ACA_APP_NAME string = m365Teams.outputs.acaAppName
+output AZURE_ACA_ENV_NAME string = m365Teams.outputs.acaEnvironmentName
+output AZURE_BOT_NAME string = m365Teams.outputs.botName
+output AZURE_FOUNDRY_PROJECT_ENDPOINT string = foundryProjectEndpoint
+output AZURE_APPINSIGHTS_NAME string = monitoring.outputs.appInsightsName
+output AZURE_UAMI_ID string = m365Teams.outputs.uamiId
+output AZURE_UAMI_CLIENT_ID string = m365Teams.outputs.uamiClientId
 output SERVICE_TEAMSBINGAGENT_RESOURCE_ID string = resourceId('Microsoft.App/containerApps', m365Teams.outputs.acaAppName)

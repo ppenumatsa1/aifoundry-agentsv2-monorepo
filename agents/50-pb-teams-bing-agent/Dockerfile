@@ -25,6 +25,6 @@ WORKDIR /app
 COPY --from=builder /install /usr/local
 COPY src /app/src
 
-EXPOSE 80
+EXPOSE 8000
 
-CMD ["uvicorn", "teams_bing_agent.app:app", "--host", "0.0.0.0", "--port", "80"]
+CMD ["uvicorn", "teams_bing_agent.app:app", "--host", "0.0.0.0", "--port", "8000"]
